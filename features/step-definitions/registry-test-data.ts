@@ -29,3 +29,7 @@ export async function createTestGift(registryId: string, name: string) {
     .returning();
   return gift.id;
 }
+
+export async function archiveTestRegistry(id: string) {
+  await db.update(registries).set({ archivedAt: new Date() }).where(eq(registries.id, id));
+}

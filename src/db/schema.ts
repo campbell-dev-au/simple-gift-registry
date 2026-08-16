@@ -12,6 +12,7 @@ export const registries = pgTable("registries", {
   ownerId: text("owner_id").notNull(),
   title: text("title").notNull(),
   eventDate: date("event_date"),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { registries, gifts } from "@/db/schema";
-import { addGift, deleteGift } from "./actions";
+import { addGift, deleteGift, archiveRegistry, unarchiveRegistry } from "./actions";
 
 export default async function RegistryPage({
   params,
@@ -38,10 +38,31 @@ export default async function RegistryPage({
       <div>
         <h1 className="text-2xl font-semibold">{registry.title}</h1>
         {registry.eventDate && <p>Event date: {registry.eventDate}</p>}
+        {registry.archivedAt && (
+          <p className="text-sm text-gray-500">Archived</p>
+        )}
         {isOwner && (
-          <Link href={`/registries/${registry.id}/edit`} className="underline">
-            Edit registry
-          </Link>
+          <div className="mt-2 flex justify-center gap-3">
+            <Link
+              href={`/registries/${registry.id}/edit`}
+              className="underline"
+            >
+              Edit registry
+            </Link>
+            {registry.archivedAt ? (
+              <form action={unarchiveRegistry.bind(null, registry.id)}>
+                <button type="submit" className="underline">
+                  Unarchive registry
+                </button>
+              </form>
+            ) : (
+              <form action={archiveRegistry.bind(null, registry.id)}>
+                <button type="submit" className="underline">
+                  Archive registry
+                </button>
+              </form>
+            )}
+          </div>
         )}
       </div>
 

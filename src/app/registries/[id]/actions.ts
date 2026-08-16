@@ -103,3 +103,35 @@ export async function deleteGift(registryId: string, giftId: string) {
 
   revalidatePath(`/registries/${registryId}`);
 }
+
+export async function archiveRegistry(registryId: string) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const db = getDb();
+  await requireOwnedRegistry(db, registryId, userId);
+
+  await db
+    .update(registries)
+    .set({ archivedAt: new Date() })
+    .where(eq(registries.id, registryId));
+
+  revalidatePath(`/registries/${registryId}`);
+  revalidatePath("/registries");
+}
+
+export async function unarchiveRegistry(registryId: string) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const db = getDb();
+  await requireOwnedRegistry(db, registryId, userId);
+
+  await db
+    .update(registries)
+    .set({ archivedAt: null })
+    .where(eq(registries.id, registryId));
+
+  revalidatePath(`/registries/${registryId}`);
+  revalidatePath("/registries");
+}

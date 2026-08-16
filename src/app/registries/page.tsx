@@ -14,15 +14,20 @@ export default async function RegistriesPage() {
     .from(registries)
     .where(eq(registries.ownerId, userId));
 
+  const activeRegistries = myRegistries.filter((r) => !r.archivedAt);
+  const archivedRegistries = myRegistries.filter((r) => r.archivedAt);
+
   return (
     <main className="flex flex-1 flex-col items-center gap-6 p-8 text-center">
       <h1 className="text-2xl font-semibold">My registries</h1>
 
       {myRegistries.length === 0 ? (
         <p className="text-gray-500">You don&apos;t have any registries yet.</p>
+      ) : activeRegistries.length === 0 ? (
+        <p className="text-gray-500">You don&apos;t have any active registries.</p>
       ) : (
         <ul className="flex w-full max-w-md flex-col gap-2 text-left">
-          {myRegistries.map((registry) => (
+          {activeRegistries.map((registry) => (
             <li key={registry.id} className="rounded border p-3">
               <Link
                 href={`/registries/${registry.id}`}
@@ -38,6 +43,24 @@ export default async function RegistriesPage() {
       <Link href="/registries/new" className="underline">
         Create a gift registry
       </Link>
+
+      {archivedRegistries.length > 0 && (
+        <section className="flex w-full max-w-md flex-col gap-3 text-left">
+          <h2 className="text-lg font-medium">Archived registries</h2>
+          <ul className="flex flex-col gap-2">
+            {archivedRegistries.map((registry) => (
+              <li key={registry.id} className="rounded border p-3">
+                <Link
+                  href={`/registries/${registry.id}`}
+                  className="font-medium underline"
+                >
+                  {registry.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

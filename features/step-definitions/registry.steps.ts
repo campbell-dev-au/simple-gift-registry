@@ -2,7 +2,11 @@ import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
 import { test } from "./fixtures";
 import { createTestAccount, deleteTestAccount } from "./clerk-test-account";
-import { deleteTestRegistry } from "./registry-test-data";
+import {
+  createTestRegistry,
+  deleteTestRegistry,
+  archiveTestRegistry,
+} from "./registry-test-data";
 
 const { Given, When, Then, Before, After } = createBdd(test);
 
@@ -91,3 +95,48 @@ Then("I see a message that I have no registries yet", async ({ page }) => {
     page.getByText("You don't have any registries yet."),
   ).toBeVisible();
 });
+
+Given("I have an archived gift registry", async ({ account, registry }) => {
+  registry.id = await createTestRegistry(account.userId, "Our Wedding Registry");
+  await archiveTestRegistry(registry.id);
+});
+
+When("I archive the registry", async ({ page, registry }) => {
+  await page.goto(`/registries/${registry.id}`);
+  await page.getByRole("button", { name: "Archive registry" }).click();
+});
+
+Then("I see the registry marked as archived", async ({ page }) => {
+  await expect(page.getByText("Archived", { exact: true })).toBeVisible();
+});
+
+Then(
+  "I see it in the archived section of my registries list",
+  async ({ page }) => {
+    await page.goto("/registries");
+    await expect(
+      page.getByRole("heading", { name: "Archived registries" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Our Wedding Registry" }),
+    ).toBeVisible();
+  },
+);
+
+When("I unarchive the registry", async ({ page, registry }) => {
+  await page.goto(`/registries/${registry.id}`);
+  await page.getByRole("button", { name: "Unarchive registry" }).click();
+});
+
+Then(
+  "I see the registry in the active section of my registries list",
+  async ({ page }) => {
+    await page.goto("/registries");
+    await expect(
+      page.getByRole("link", { name: "Our Wedding Registry" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Archived registries" }),
+    ).toHaveCount(0);
+  },
+);
