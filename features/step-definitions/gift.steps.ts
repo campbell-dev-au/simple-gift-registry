@@ -51,15 +51,15 @@ Then(
   },
 );
 
-Given("someone else owns a gift registry", async ({ registry }) => {
-  registry.id = await createTestRegistry(
+Given("someone else owns a gift registry", async ({ otherRegistry }) => {
+  otherRegistry.id = await createTestRegistry(
     "user_someone_else_not_the_signed_in_user",
     "Someone Else's Registry",
   );
 });
 
-When("I visit their registry", async ({ page, registry }) => {
-  await page.goto(`/registries/${registry.id}`);
+When("I visit their registry", async ({ page, otherRegistry }) => {
+  await page.goto(`/registries/${otherRegistry.id}`);
 });
 
 Then("I do not see a way to add a gift", async ({ page }) => {
@@ -72,8 +72,8 @@ Given("the registry has a gift", async ({ registry }) => {
   await createTestGift(registry.id, EXISTING_GIFT_NAME);
 });
 
-Given("their registry has a gift", async ({ registry }) => {
-  await createTestGift(registry.id, EXISTING_GIFT_NAME);
+Given("their registry has a gift", async ({ otherRegistry }) => {
+  await createTestGift(otherRegistry.id, EXISTING_GIFT_NAME);
 });
 
 When("I edit the gift's details", async ({ page, registry }) => {

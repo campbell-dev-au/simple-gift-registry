@@ -10,10 +10,13 @@ Before("@registry", async ({ account }) => {
   await createTestAccount(account);
 });
 
-After("@registry", async ({ account, registry }) => {
+After("@registry", async ({ account, registry, otherRegistry }) => {
   await deleteTestAccount(account);
   if (registry.id) {
     await deleteTestRegistry(registry.id);
+  }
+  if (otherRegistry.id) {
+    await deleteTestRegistry(otherRegistry.id);
   }
 });
 
@@ -67,4 +70,24 @@ Then("I do not see a way to edit the registry", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: "Edit registry" }),
   ).toHaveCount(0);
+});
+
+When("I view my registries", async ({ page }) => {
+  await page.goto("/registries");
+});
+
+Then("I see my registry in the list", async ({ page }) => {
+  await expect(
+    page.getByRole("link", { name: "Our Wedding Registry" }),
+  ).toBeVisible();
+});
+
+Then("I do not see the other registry in the list", async ({ page }) => {
+  await expect(page.getByText("Someone Else's Registry")).toHaveCount(0);
+});
+
+Then("I see a message that I have no registries yet", async ({ page }) => {
+  await expect(
+    page.getByText("You don't have any registries yet."),
+  ).toBeVisible();
 });
