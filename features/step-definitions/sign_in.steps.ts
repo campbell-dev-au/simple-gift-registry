@@ -1,34 +1,18 @@
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
-import { createClerkClient } from "@clerk/backend";
 import { setupClerkTestingToken } from "@clerk/testing/playwright";
 import { test } from "./fixtures";
+import { createTestAccount, deleteTestAccount } from "./clerk-test-account";
 
 const { Given, When, Before, After } = createBdd(test);
 
-const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
-
-Before("@sign-in", async ({ page }) => {
+Before("@sign-in", async ({ page, account }) => {
   await setupClerkTestingToken({ page });
-});
-
-Before("@sign-in", async ({ account }) => {
-  // Seed the account directly via the Backend API instead of the sign-up UI —
-  // keeps this scenario independent of, and faster than, the sign-up flow.
-  account.email = `gift-registry-test-${Date.now()}+clerk_test@example.com`;
-  account.password = "Correct-Horse-Battery-Staple-1!";
-
-  const user = await clerkClient.users.createUser({
-    emailAddress: [account.email],
-    password: account.password,
-  });
-  account.userId = user.id;
+  await createTestAccount(account);
 });
 
 After("@sign-in", async ({ account }) => {
-  if (account.userId) {
-    await clerkClient.users.deleteUser(account.userId);
-  }
+  await deleteTestAccount(account);
 });
 
 Given("I have an existing account", async () => {

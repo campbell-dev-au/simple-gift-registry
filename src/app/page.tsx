@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { currentUser } from "@clerk/nextjs/server";
+import { SignOutButton } from "./sign-out-button";
 
 export default async function Home() {
   const user = await currentUser();
@@ -9,6 +10,7 @@ export default async function Home() {
       <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
         <h1 className="text-3xl font-semibold">Gift Registry</h1>
         <p>Signed in as {user.primaryEmailAddress?.emailAddress}</p>
+        <SignOutButton />
       </main>
     );
   }
