@@ -11,7 +11,9 @@ const { Given, When, Then } = createBdd(test);
 const EXISTING_GIFT_NAME = "Kettle";
 
 Given("I have created a gift registry", async ({ account, registry }) => {
-  registry.id = await createTestRegistry(account.userId, "Our Wedding Registry");
+  const created = await createTestRegistry(account.userId, "Our Wedding Registry");
+  registry.id = created.id;
+  registry.shareToken = created.shareToken;
 });
 
 When(
@@ -52,10 +54,12 @@ Then(
 );
 
 Given("someone else owns a gift registry", async ({ otherRegistry }) => {
-  otherRegistry.id = await createTestRegistry(
+  const created = await createTestRegistry(
     "user_someone_else_not_the_signed_in_user",
     "Someone Else's Registry",
   );
+  otherRegistry.id = created.id;
+  otherRegistry.shareToken = created.shareToken;
 });
 
 When("I visit their registry", async ({ page, otherRegistry }) => {

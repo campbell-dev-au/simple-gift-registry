@@ -97,7 +97,9 @@ Then("I see a message that I have no registries yet", async ({ page }) => {
 });
 
 Given("I have an archived gift registry", async ({ account, registry }) => {
-  registry.id = await createTestRegistry(account.userId, "Our Wedding Registry");
+  const created = await createTestRegistry(account.userId, "Our Wedding Registry");
+  registry.id = created.id;
+  registry.shareToken = created.shareToken;
   await archiveTestRegistry(registry.id);
 });
 
@@ -140,3 +142,31 @@ Then(
     ).toHaveCount(0);
   },
 );
+
+When("I view the registry", async ({ page, registry }) => {
+  await page.goto(`/registries/${registry.id}`);
+});
+
+Then("I see a link I can share with others", async ({ page }) => {
+  await expect(page.getByLabel("Share link")).toBeVisible();
+});
+
+When("I get a new share link", async ({ page, registry }) => {
+  registry.oldShareUrl = await page.getByLabel("Share link").inputValue();
+  await page.getByRole("button", { name: "Get a new share link" }).click();
+  // The click resolves once the request is sent, not once the server
+  // action + revalidation have actually finished — wait for the displayed
+  // link to actually change before trusting the old one is invalidated.
+  await expect(page.getByLabel("Share link")).not.toHaveValue(
+    registry.oldShareUrl,
+  );
+});
+
+Then("the old share link no longer works", async ({ page, registry }) => {
+  const response = await page.goto(registry.oldShareUrl);
+  expect(response?.status()).toBe(404);
+});
+
+Then("I do not see who claimed the gift", async ({ page }) => {
+  await expect(page.getByText("Claimed by")).toHaveCount(0);
+});

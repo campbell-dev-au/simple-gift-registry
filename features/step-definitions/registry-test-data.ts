@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { registries, gifts } from "../../src/db/schema";
 
 // A plain pg.Pool over the app's schema — deliberately not the app's
@@ -14,7 +14,7 @@ export async function createTestRegistry(ownerId: string, title: string) {
     .insert(registries)
     .values({ ownerId, title })
     .returning();
-  return registry.id;
+  return registry;
 }
 
 // Cascades to the registry's gifts (see the FK's onDelete: "cascade").
@@ -32,4 +32,15 @@ export async function createTestGift(registryId: string, name: string) {
 
 export async function archiveTestRegistry(id: string) {
   await db.update(registries).set({ archivedAt: new Date() }).where(eq(registries.id, id));
+}
+
+export async function claimTestGift(
+  registryId: string,
+  giftName: string,
+  claimantName: string,
+) {
+  await db
+    .update(gifts)
+    .set({ claimedByName: claimantName, claimedAt: new Date() })
+    .where(and(eq(gifts.registryId, registryId), eq(gifts.name, giftName)));
 }

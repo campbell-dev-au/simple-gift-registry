@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { registries, gifts } from "@/db/schema";
-import { addGift, deleteGift, archiveRegistry, unarchiveRegistry } from "./actions";
+import {
+  addGift,
+  deleteGift,
+  archiveRegistry,
+  unarchiveRegistry,
+  regenerateShareLink,
+} from "./actions";
 
 export default async function RegistryPage({
   params,
@@ -32,6 +39,13 @@ export default async function RegistryPage({
     .where(eq(gifts.registryId, id));
 
   const isOwner = userId === registry.ownerId;
+
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const protocol =
+    headersList.get("x-forwarded-proto") ??
+    (host?.startsWith("localhost") ? "http" : "https");
+  const shareUrl = `${protocol}://${host}/share/${registry.shareToken}`;
 
   return (
     <main className="flex flex-1 flex-col items-center gap-6 p-8 text-center">
@@ -65,6 +79,26 @@ export default async function RegistryPage({
           </div>
         )}
       </div>
+
+      {isOwner && (
+        <section className="flex w-full max-w-md flex-col gap-2 text-left">
+          <h2 className="text-lg font-medium">Share this registry</h2>
+          <label htmlFor="share-link" className="text-sm font-medium">
+            Share link
+          </label>
+          <input
+            id="share-link"
+            readOnly
+            value={shareUrl}
+            className="w-full rounded border px-3 py-2"
+          />
+          <form action={regenerateShareLink.bind(null, registry.id)}>
+            <button type="submit" className="text-sm underline">
+              Get a new share link
+            </button>
+          </form>
+        </section>
+      )}
 
       <section className="flex w-full max-w-md flex-col gap-3 text-left">
         <h2 className="text-lg font-medium">Gifts</h2>

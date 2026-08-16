@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -134,4 +135,21 @@ export async function unarchiveRegistry(registryId: string) {
 
   revalidatePath(`/registries/${registryId}`);
   revalidatePath("/registries");
+}
+
+// Issues a new share token, invalidating the old /share/[token] link — the
+// owner's recourse if a link gets shared more widely than intended.
+export async function regenerateShareLink(registryId: string) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const db = getDb();
+  await requireOwnedRegistry(db, registryId, userId);
+
+  await db
+    .update(registries)
+    .set({ shareToken: randomUUID() })
+    .where(eq(registries.id, registryId));
+
+  revalidatePath(`/registries/${registryId}`);
 }
