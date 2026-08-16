@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { registries, gifts } from "@/db/schema";
-import { addGift } from "./actions";
+import { addGift, deleteGift } from "./actions";
 
 export default async function RegistryPage({
   params,
@@ -37,6 +38,11 @@ export default async function RegistryPage({
       <div>
         <h1 className="text-2xl font-semibold">{registry.title}</h1>
         {registry.eventDate && <p>Event date: {registry.eventDate}</p>}
+        {isOwner && (
+          <Link href={`/registries/${registry.id}/edit`} className="underline">
+            Edit registry
+          </Link>
+        )}
       </div>
 
       <section className="flex w-full max-w-md flex-col gap-3 text-left">
@@ -53,6 +59,26 @@ export default async function RegistryPage({
                 </p>
                 {gift.notes && (
                   <p className="text-sm text-gray-500">{gift.notes}</p>
+                )}
+                {isOwner && (
+                  <div className="mt-2 flex gap-3">
+                    <Link
+                      href={`/registries/${registry.id}/gifts/${gift.id}/edit`}
+                      aria-label={`Edit ${gift.name}`}
+                      className="text-sm underline"
+                    >
+                      Edit
+                    </Link>
+                    <form action={deleteGift.bind(null, registry.id, gift.id)}>
+                      <button
+                        type="submit"
+                        aria-label={`Remove ${gift.name}`}
+                        className="text-sm underline"
+                      >
+                        Remove
+                      </button>
+                    </form>
+                  </div>
                 )}
               </li>
             ))}

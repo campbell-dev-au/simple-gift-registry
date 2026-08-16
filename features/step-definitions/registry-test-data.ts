@@ -21,3 +21,11 @@ export async function createTestRegistry(ownerId: string, title: string) {
 export async function deleteTestRegistry(id: string) {
   await db.delete(registries).where(eq(registries.id, id));
 }
+
+export async function createTestGift(registryId: string, name: string) {
+  const [gift] = await db
+    .insert(gifts)
+    .values({ registryId, name })
+    .returning();
+  return gift.id;
+}

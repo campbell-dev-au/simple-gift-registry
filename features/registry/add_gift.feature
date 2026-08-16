@@ -21,5 +21,7 @@ Feature: Add a gift to a registry
   Scenario: Non-owner cannot add a gift to someone else's registry
     Given I am already signed in
     And someone else owns a gift registry
+    And their registry has a gift
     When I visit their registry
     Then I do not see a way to add a gift
+    And I do not see a way to edit or remove that gift
