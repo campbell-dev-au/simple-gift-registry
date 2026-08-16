@@ -17,8 +17,18 @@ Open [http://localhost:3000](http://localhost:3000).
 - Tailwind CSS
 - ESLint
 - [Playwright](https://playwright.dev) + [playwright-bdd](https://vitalets.github.io/playwright-bdd/) for Gherkin-driven functional testing
+- [Clerk](https://clerk.com) for account creation / authentication (provisioned via the Vercel Marketplace)
 
 Additional tooling (security, accessibility) to be added as the project grows.
+
+### Environment variables
+
+Clerk keys live in `.env.local` (gitignored, provisioned by Vercel). If you're setting up a fresh checkout, run:
+
+```bash
+vercel link
+vercel env pull
+```
 
 ## BDD workflow
 
