@@ -12,6 +12,20 @@ export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [emailCodeSent, setEmailCodeSent] = useState(false);
+
+  const finalize = async () => {
+    await signUp.finalize({
+      navigate: ({ session, decorateUrl }) => {
+        const url = decorateUrl(session?.currentTask ? "/sign-up" : "/");
+        if (url.startsWith("http")) {
+          window.location.href = url;
+        } else {
+          router.push(url);
+        }
+      },
+    });
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -22,7 +36,13 @@ export default function SignUpPage() {
     });
     if (error) return;
 
+    // The verify form can render as soon as signUp.status flips to
+    // missing_requirements, which may happen before sendEmailCode() below
+    // resolves — emailCodeSent gates the Verify button so a submission can't
+    // race ahead of the code actually being sent (see sign-in page for the
+    // same issue observed directly: "verification_not_sent").
     await signUp.verifications.sendEmailCode();
+    setEmailCodeSent(true);
   };
 
   const handleVerify = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -31,16 +51,7 @@ export default function SignUpPage() {
     await signUp.verifications.verifyEmailCode({ code });
 
     if (signUp.status === "complete") {
-      await signUp.finalize({
-        navigate: ({ session, decorateUrl }) => {
-          const url = decorateUrl(session?.currentTask ? "/sign-up" : "/");
-          if (url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.push(url);
-          }
-        },
-      });
+      await finalize();
     }
   };
 
@@ -76,7 +87,7 @@ export default function SignUpPage() {
           )}
           <button
             type="submit"
-            disabled={fetchStatus === "fetching"}
+            disabled={fetchStatus === "fetching" || !emailCodeSent}
             className="rounded bg-black py-2 text-white"
           >
             Verify

@@ -17,9 +17,14 @@ export default async function Home() {
     <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
       <h1 className="text-3xl font-semibold">Gift Registry</h1>
       <p className="text-gray-500">Bare-bones scaffold — ready to build on.</p>
-      <Link href="/sign-up" className="underline">
-        Create account
-      </Link>
+      <div className="flex gap-4">
+        <Link href="/sign-up" className="underline">
+          Create account
+        </Link>
+        <Link href="/sign-in" className="underline">
+          Sign in
+        </Link>
+      </div>
     </main>
   );
 }

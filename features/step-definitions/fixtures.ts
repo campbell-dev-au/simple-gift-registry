@@ -1,11 +1,11 @@
 import { test as base } from "playwright-bdd";
 
 type AccountFixtures = {
-  account: { email: string };
+  account: { email: string; password: string; userId: string };
 };
 
 export const test = base.extend<AccountFixtures>({
   account: async ({}, use) => {
-    await use({ email: "" });
+    await use({ email: "", password: "", userId: "" });
   },
 });

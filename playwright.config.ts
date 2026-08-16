@@ -16,9 +16,13 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: [["html", { open: "never" }]],
+  // Scenarios call Clerk's real hosted API rather than a mock, so allow more
+  // headroom than Playwright's 5s default for occasional network latency.
+  expect: { timeout: 10_000 },
   use: {
     baseURL: "http://localhost:3100",
     trace: "on-first-retry",
+    actionTimeout: 10_000,
   },
   projects: [
     {
