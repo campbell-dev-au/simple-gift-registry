@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:bdd": "bddgen && playwright test",
+    "test:bdd:app": "bddgen && playwright test .features-gen/features/homepage .features-gen/features/registry",
+    "test:bdd:account": "bddgen && playwright test .features-gen/features/account",
     "test:bdd:ui": "bddgen && playwright test --ui",
     "test:bdd:report": "playwright show-report",
     "db:generate": "dotenv -e .env.local -- drizzle-kit generate",
