@@ -6,8 +6,9 @@
 
 ## Acceptance Criteria
 
-- From my registry page, I can add a gift with a name and optional notes (no link field).
-- The gift appears in the registry's gift list.
+- From my registry page, I can add a gift with a name, optional notes (no link field), and a quantity.
+- Quantity defaults to 1 if not specified.
+- The gift appears in the registry's gift list, showing its quantity.
 - Only the registry's owner can add gifts to it.
 
 ## Notes

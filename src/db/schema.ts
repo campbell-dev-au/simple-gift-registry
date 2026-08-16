@@ -1,4 +1,11 @@
-import { pgTable, uuid, text, date, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  date,
+  timestamp,
+  integer,
+} from "drizzle-orm/pg-core";
 
 export const registries = pgTable("registries", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -17,6 +24,7 @@ export const gifts = pgTable("gifts", {
     .references(() => registries.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   notes: text("notes"),
+  quantity: integer("quantity").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

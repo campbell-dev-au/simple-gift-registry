@@ -48,6 +48,9 @@ export default async function RegistryPage({
             {registryGifts.map((gift) => (
               <li key={gift.id} className="rounded border p-3">
                 <p className="font-medium">{gift.name}</p>
+                <p className="text-sm text-gray-500">
+                  Quantity: {gift.quantity}
+                </p>
                 {gift.notes && (
                   <p className="text-sm text-gray-500">{gift.notes}</p>
                 )}
@@ -81,6 +84,18 @@ export default async function RegistryPage({
           <textarea
             id="notes"
             name="notes"
+            className="rounded border px-3 py-2"
+          />
+
+          <label htmlFor="quantity" className="text-sm font-medium">
+            Quantity
+          </label>
+          <input
+            id="quantity"
+            name="quantity"
+            type="number"
+            min="1"
+            defaultValue={1}
             className="rounded border px-3 py-2"
           />
 

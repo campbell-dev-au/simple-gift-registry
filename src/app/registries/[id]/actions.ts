@@ -23,11 +23,13 @@ export async function addGift(registryId: string, formData: FormData) {
 
   const name = formData.get("name") as string;
   const notes = formData.get("notes") as string;
+  const quantity = Number.parseInt(formData.get("quantity") as string, 10);
 
   await db.insert(gifts).values({
     registryId,
     name,
     notes: notes || null,
+    quantity: Number.isInteger(quantity) && quantity > 0 ? quantity : 1,
   });
 
   revalidatePath(`/registries/${registryId}`);

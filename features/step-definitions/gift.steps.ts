@@ -9,17 +9,42 @@ Given("I have created a gift registry", async ({ account, registry }) => {
   registry.id = await createTestRegistry(account.userId, "Our Wedding Registry");
 });
 
-When("I add a gift with a name and notes", async ({ page, registry }) => {
-  await page.goto(`/registries/${registry.id}`);
-  await page.getByLabel("Gift name").fill("Espresso Machine");
-  await page.getByLabel("Notes (optional)").fill("Any brand is fine!");
-  await page.getByRole("button", { name: "Add gift" }).click();
-});
+When(
+  "I add a gift with a name, notes, and a quantity",
+  async ({ page, registry }) => {
+    await page.goto(`/registries/${registry.id}`);
+    await page.getByLabel("Gift name").fill("Espresso Machine");
+    await page.getByLabel("Notes (optional)").fill("Any brand is fine!");
+    await page.getByLabel("Quantity").fill("2");
+    await page.getByRole("button", { name: "Add gift" }).click();
+  },
+);
 
-Then("I see the gift in my registry's gift list", async ({ page }) => {
-  await expect(page.getByText("Espresso Machine")).toBeVisible();
-  await expect(page.getByText("Any brand is fine!")).toBeVisible();
-});
+Then(
+  "I see the gift with that quantity in my registry's gift list",
+  async ({ page }) => {
+    await expect(page.getByText("Espresso Machine")).toBeVisible();
+    await expect(page.getByText("Any brand is fine!")).toBeVisible();
+    await expect(page.getByText("Quantity: 2")).toBeVisible();
+  },
+);
+
+When(
+  "I add a gift without specifying a quantity",
+  async ({ page, registry }) => {
+    await page.goto(`/registries/${registry.id}`);
+    await page.getByLabel("Gift name").fill("Blender");
+    await page.getByRole("button", { name: "Add gift" }).click();
+  },
+);
+
+Then(
+  "I see the gift with a quantity of one in my registry's gift list",
+  async ({ page }) => {
+    await expect(page.getByText("Blender")).toBeVisible();
+    await expect(page.getByText("Quantity: 1")).toBeVisible();
+  },
+);
 
 Given("someone else owns a gift registry", async ({ registry }) => {
   registry.id = await createTestRegistry(
