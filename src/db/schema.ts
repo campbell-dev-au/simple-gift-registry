@@ -9,3 +9,15 @@ export const registries = pgTable("registries", {
     .notNull()
     .defaultNow(),
 });
+
+export const gifts = pgTable("gifts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  registryId: uuid("registry_id")
+    .notNull()
+    .references(() => registries.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

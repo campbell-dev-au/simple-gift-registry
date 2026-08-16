@@ -1,14 +1,10 @@
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
-import { Pool } from "pg";
 import { test } from "./fixtures";
 import { createTestAccount, deleteTestAccount } from "./clerk-test-account";
+import { deleteTestRegistry } from "./registry-test-data";
 
 const { Given, When, Then, Before, After } = createBdd(test);
-
-// A plain pg.Pool (not the app's getDb()) — test cleanup shouldn't depend on
-// the app's Vercel-Functions-specific pool lifecycle hook.
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 Before("@registry", async ({ account }) => {
   await createTestAccount(account);
@@ -17,7 +13,7 @@ Before("@registry", async ({ account }) => {
 After("@registry", async ({ account, registry }) => {
   await deleteTestAccount(account);
   if (registry.id) {
-    await pool.query("DELETE FROM registries WHERE id = $1", [registry.id]);
+    await deleteTestRegistry(registry.id);
   }
 });
 

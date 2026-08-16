@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createClerkClient } from "@clerk/backend";
 
 export const clerkClient = createClerkClient({
@@ -12,7 +13,13 @@ type TestAccount = { email: string; password: string; userId: string };
 // downstream verification steps deterministic (fixed 424242 code, no real
 // email sent). https://clerk.com/docs/testing/test-emails-and-phones
 export async function createTestAccount(account: TestAccount) {
-  account.email = `gift-registry-test-${Date.now()}+clerk_test@example.com`;
+  // A random hex suffix rather than Date.now() — with several @registry-
+  // tagged scenarios now starting their Before hooks near-simultaneously
+  // across parallel workers, millisecond timestamps can collide. Sliced to
+  // 8 chars: the full 36-char randomUUID() pushes the local part (before
+  // @) past the 64-char RFC limit once combined with the other fixed text,
+  // which Clerk rejects as "not a valid email address".
+  account.email = `gift-registry-test-${randomUUID().slice(0, 8)}+clerk_test@example.com`;
   account.password = "Correct-Horse-Battery-Staple-1!";
 
   const user = await clerkClient.users.createUser({

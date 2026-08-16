@@ -8,6 +8,13 @@
       "when": 1786876369906,
       "tag": "0000_square_slipstream",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786878350928,
+      "tag": "0001_fat_christian_walker",
+      "breakpoints": true
     }
   ]
 }

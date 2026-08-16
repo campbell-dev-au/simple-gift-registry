@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect } from "@playwright/test";
 import { createBdd } from "playwright-bdd";
 import { setupClerkTestingToken } from "@clerk/testing/playwright";
@@ -22,7 +23,10 @@ When(
   async ({ page, account }) => {
     // The +clerk_test subaddress and 424242 code make sign-up deterministic —
     // no real email is sent. https://clerk.com/docs/testing/test-emails-and-phones
-    account.email = `gift-registry-test-${Date.now()}+clerk_test@example.com`;
+    // A random hex suffix (not Date.now()) avoids collisions across parallel
+    // workers; sliced to 8 chars to stay under the 64-char local-part limit
+    // once combined with the other fixed text (see clerk-test-account.ts).
+    account.email = `gift-registry-test-${randomUUID().slice(0, 8)}+clerk_test@example.com`;
 
     await page.getByLabel("Email address").fill(account.email);
     await page.getByLabel("Password").fill("Correct-Horse-Battery-Staple-1!");
