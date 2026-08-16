@@ -10,6 +10,9 @@ export default async function Home() {
       <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
         <h1 className="text-3xl font-semibold">Gift Registry</h1>
         <p>Signed in as {user.primaryEmailAddress?.emailAddress}</p>
+        <Link href="/registries/new" className="underline">
+          Create a gift registry
+        </Link>
         <SignOutButton />
       </main>
     );

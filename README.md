@@ -18,16 +18,26 @@ Open [http://localhost:3000](http://localhost:3000).
 - ESLint
 - [Playwright](https://playwright.dev) + [playwright-bdd](https://vitalets.github.io/playwright-bdd/) for Gherkin-driven functional testing
 - [Clerk](https://clerk.com) for account creation / authentication (provisioned via the Vercel Marketplace)
+- [Neon Postgres](https://neon.com) + [Drizzle ORM](https://orm.drizzle.team) for persistence (provisioned via the Vercel Marketplace)
 
 Additional tooling (security, accessibility) to be added as the project grows.
 
 ### Environment variables
 
-Clerk keys live in `.env.local` (gitignored, provisioned by Vercel). If you're setting up a fresh checkout, run:
+Clerk and database credentials live in `.env.local` (gitignored, provisioned by Vercel). If you're setting up a fresh checkout, run:
 
 ```bash
 vercel link
 vercel env pull
+```
+
+### Database
+
+Schema lives in `src/db/schema.ts`; generated SQL migrations are committed under `drizzle/`.
+
+```bash
+npm run db:generate  # after changing src/db/schema.ts, generate a migration
+npm run db:migrate   # apply pending migrations to the database in .env.local
 ```
 
 ## BDD workflow
