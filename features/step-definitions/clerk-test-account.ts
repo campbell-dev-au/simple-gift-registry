@@ -25,6 +25,8 @@ export async function createTestAccount(account: TestAccount) {
   const user = await clerkClient.users.createUser({
     emailAddress: [account.email],
     password: account.password,
+    firstName: "Test",
+    lastName: "Account",
   });
   account.userId = user.id;
 }

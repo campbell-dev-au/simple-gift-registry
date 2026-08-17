@@ -28,6 +28,8 @@ When(
     // once combined with the other fixed text (see clerk-test-account.ts).
     account.email = `gift-registry-test-${randomUUID().slice(0, 8)}+clerk_test@example.com`;
 
+    await page.getByLabel("First name").fill("Jamie");
+    await page.getByLabel("Last name").fill("Rivera");
     await page.getByLabel("Email address").fill(account.email);
     await page.getByLabel("Password").fill("Correct-Horse-Battery-Staple-1!");
     await page.getByRole("button", { name: "Continue" }).click();
