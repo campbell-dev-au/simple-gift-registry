@@ -7,6 +7,7 @@ import {
   deleteTestRegistry,
   claimTestGift,
 } from "./registry-test-data";
+import { MULTI_QTY_GIFT_NAME } from "./gift.steps";
 
 const { Given, When, Then, Before, After } = createBdd(test);
 
@@ -91,8 +92,52 @@ Then("I see the gift is available to claim again", async ({ page }) => {
 });
 
 Then("I am prompted to sign in to claim the gift", async ({ page }) => {
-  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+  // Scoped to "...to claim this gift" rather than a bare "Sign in" link —
+  // the page can also show a "Sign in to save this registry" link (see
+  // save_registry.feature), and a plain "Sign in" query would match both.
+  await expect(page.getByText("to claim this gift")).toBeVisible();
   await expect(
     page.getByRole("button", { name: `Claim ${GUEST_GIFT_NAME}` }),
   ).toHaveCount(0);
+});
+
+Given(
+  "{int} of the gift have been claimed by someone else",
+  async ({ registry }, quantity: number) => {
+    await claimTestGift(
+      registry.id,
+      MULTI_QTY_GIFT_NAME,
+      "user_someone_else_claimed_this",
+      quantity,
+    );
+  },
+);
+
+When("I claim {int} of the gift", async ({ page }, quantity: number) => {
+  await page.getByLabel("Quantity to claim").fill(String(quantity));
+  await page
+    .getByRole("button", { name: `Claim ${MULTI_QTY_GIFT_NAME}` })
+    .click();
+});
+
+Then(
+  "I see the gift marked as claimed by me for {int}",
+  async ({ page }, quantity: number) => {
+    await expect(
+      page.getByText(`Claimed by you (${quantity})`),
+    ).toBeVisible();
+  },
+);
+
+Then("I see {int} remaining", async ({ page }, quantity: number) => {
+  await expect(
+    page.getByText(`${quantity} remaining`, { exact: true }),
+  ).toBeVisible();
+});
+
+Then("the most I can claim is {int}", async ({ page }, quantity: number) => {
+  await expect(page.getByLabel("Quantity to claim")).toHaveAttribute(
+    "max",
+    String(quantity),
+  );
 });

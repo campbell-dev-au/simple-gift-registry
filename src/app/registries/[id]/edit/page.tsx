@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { registries } from "@/db/schema";
+import { canManageRegistry } from "@/lib/registry-access";
 import { updateRegistry } from "../actions";
 
 export default async function EditRegistryPage({
@@ -17,13 +18,16 @@ export default async function EditRegistryPage({
 
   const { userId } = await auth();
 
-  const [registry] = await getDb()
+  const db = getDb();
+  const [registry] = await db
     .select()
     .from(registries)
     .where(eq(registries.id, id));
 
   if (!registry) notFound();
-  if (userId !== registry.ownerId) redirect(`/registries/${id}`);
+  if (!(await canManageRegistry(db, registry.ownerId, registry.id, userId ?? null))) {
+    redirect(`/registries/${id}`);
+  }
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8">

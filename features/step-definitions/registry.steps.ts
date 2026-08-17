@@ -14,8 +14,11 @@ Before("@registry", async ({ account }) => {
   await createTestAccount(account);
 });
 
-After("@registry", async ({ account, registry, otherRegistry }) => {
+After("@registry", async ({ account, otherAccount, registry, otherRegistry }) => {
   await deleteTestAccount(account);
+  if (otherAccount.userId) {
+    await deleteTestAccount(otherAccount);
+  }
   if (registry.id) {
     await deleteTestRegistry(registry.id);
   }

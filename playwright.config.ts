@@ -42,5 +42,9 @@ export default defineConfig({
     url: "http://localhost:3100",
     reuseExistingServer: !process.env.CI,
     stdout: "pipe",
+    // A distinct distDir (see next.config.ts) so this dev server doesn't
+    // collide, via Next's dev-server lockfile, with one already running
+    // manually (e.g. on port 3002) for the same project.
+    env: { ...process.env, NEXT_DIST_DIR: ".next-test" },
   },
 });

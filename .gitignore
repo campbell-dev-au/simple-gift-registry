@@ -21,6 +21,10 @@
 
 # next.js
 /.next/
+# Separate build/dist dir the Playwright webServer uses (see playwright.config.ts)
+# so its dev server doesn't collide with a manually-running one via Next's
+# per-project dev-server lockfile, which lives under distDir.
+/.next-test/
 /out/
 
 # production

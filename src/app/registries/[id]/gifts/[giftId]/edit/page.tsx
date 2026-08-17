@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { registries, gifts } from "@/db/schema";
+import { canManageRegistry } from "@/lib/registry-access";
 import { updateGift } from "../../../actions";
 
 export default async function EditGiftPage({
@@ -17,15 +18,18 @@ export default async function EditGiftPage({
 
   const { userId } = await auth();
 
-  const [registry] = await getDb()
+  const db = getDb();
+  const [registry] = await db
     .select()
     .from(registries)
     .where(eq(registries.id, id));
 
   if (!registry) notFound();
-  if (userId !== registry.ownerId) redirect(`/registries/${id}`);
+  if (!(await canManageRegistry(db, registry.ownerId, registry.id, userId ?? null))) {
+    redirect(`/registries/${id}`);
+  }
 
-  const [gift] = await getDb()
+  const [gift] = await db
     .select()
     .from(gifts)
     .where(eq(gifts.id, giftId));

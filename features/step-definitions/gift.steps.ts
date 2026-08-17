@@ -10,6 +10,11 @@ const { Given, When, Then } = createBdd(test);
 // fixture) is enough to disambiguate its Edit/Remove controls.
 const EXISTING_GIFT_NAME = "Kettle";
 
+// Separate name (and quantity > 1) for scenarios exercising partial-quantity
+// claiming, kept distinct from EXISTING_GIFT_NAME so a scenario never ends
+// up with two gifts and an ambiguous "Quantity to claim" label match.
+export const MULTI_QTY_GIFT_NAME = "Blankets";
+
 Given("I have created a gift registry", async ({ account, registry }) => {
   const created = await createTestRegistry(account.userId, "Our Wedding Registry");
   registry.id = created.id;
@@ -75,6 +80,13 @@ Then("I do not see a way to add a gift", async ({ page }) => {
 Given("the registry has a gift", async ({ registry }) => {
   await createTestGift(registry.id, EXISTING_GIFT_NAME);
 });
+
+Given(
+  "the registry has a gift with a quantity of {int}",
+  async ({ registry }, quantity: number) => {
+    await createTestGift(registry.id, MULTI_QTY_GIFT_NAME, quantity);
+  },
+);
 
 Given("their registry has a gift", async ({ otherRegistry }) => {
   await createTestGift(otherRegistry.id, EXISTING_GIFT_NAME);

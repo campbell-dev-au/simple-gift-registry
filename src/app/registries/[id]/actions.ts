@@ -6,18 +6,37 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { eq, and } from "drizzle-orm";
 import { getDb } from "@/db";
-import { registries, gifts } from "@/db/schema";
+import { registries, gifts, registryInvitations } from "@/db/schema";
+import { canManageRegistry } from "@/lib/registry-access";
 
 type Db = ReturnType<typeof getDb>;
 
-async function requireOwnedRegistry(db: Db, registryId: string, userId: string) {
+// Owner or accepted co-owner — the two have equal management rights over
+// gifts and registry details (see docs/stories/invite-co-owner.md).
+async function requireRegistryAccess(db: Db, registryId: string, userId: string) {
+  const [registry] = await db
+    .select()
+    .from(registries)
+    .where(eq(registries.id, registryId));
+
+  if (!registry || !(await canManageRegistry(db, registry.ownerId, registry.id, userId))) {
+    throw new Error("Only the registry's owner or an invited co-owner can do that.");
+  }
+
+  return registry;
+}
+
+// Stricter than requireRegistryAccess — removing a co-owner is reserved for
+// the person who created the registry, not any co-owner (deliberate: a
+// co-owner shouldn't be able to remove the original owner or each other).
+async function requirePrimaryOwner(db: Db, registryId: string, userId: string) {
   const [registry] = await db
     .select()
     .from(registries)
     .where(eq(registries.id, registryId));
 
   if (!registry || registry.ownerId !== userId) {
-    throw new Error("Only the registry's owner can do that.");
+    throw new Error("Only the registry's original owner can do that.");
   }
 
   return registry;
@@ -28,7 +47,7 @@ export async function addGift(registryId: string, formData: FormData) {
   if (!userId) redirect("/sign-in");
 
   const db = getDb();
-  await requireOwnedRegistry(db, registryId, userId);
+  await requireRegistryAccess(db, registryId, userId);
 
   const name = formData.get("name") as string;
   const notes = formData.get("notes") as string;
@@ -49,7 +68,7 @@ export async function updateRegistry(registryId: string, formData: FormData) {
   if (!userId) redirect("/sign-in");
 
   const db = getDb();
-  await requireOwnedRegistry(db, registryId, userId);
+  await requireRegistryAccess(db, registryId, userId);
 
   const title = formData.get("title") as string;
   const eventDate = formData.get("eventDate") as string;
@@ -72,7 +91,7 @@ export async function updateGift(
   if (!userId) redirect("/sign-in");
 
   const db = getDb();
-  await requireOwnedRegistry(db, registryId, userId);
+  await requireRegistryAccess(db, registryId, userId);
 
   const name = formData.get("name") as string;
   const notes = formData.get("notes") as string;
@@ -96,7 +115,7 @@ export async function deleteGift(registryId: string, giftId: string) {
   if (!userId) redirect("/sign-in");
 
   const db = getDb();
-  await requireOwnedRegistry(db, registryId, userId);
+  await requireRegistryAccess(db, registryId, userId);
 
   await db
     .delete(gifts)
@@ -110,7 +129,7 @@ export async function archiveRegistry(registryId: string) {
   if (!userId) redirect("/sign-in");
 
   const db = getDb();
-  await requireOwnedRegistry(db, registryId, userId);
+  await requireRegistryAccess(db, registryId, userId);
 
   await db
     .update(registries)
@@ -126,7 +145,7 @@ export async function unarchiveRegistry(registryId: string) {
   if (!userId) redirect("/sign-in");
 
   const db = getDb();
-  await requireOwnedRegistry(db, registryId, userId);
+  await requireRegistryAccess(db, registryId, userId);
 
   await db
     .update(registries)
@@ -144,12 +163,90 @@ export async function regenerateShareLink(registryId: string) {
   if (!userId) redirect("/sign-in");
 
   const db = getDb();
-  await requireOwnedRegistry(db, registryId, userId);
+  await requireRegistryAccess(db, registryId, userId);
 
   await db
     .update(registries)
     .set({ shareToken: randomUUID() })
     .where(eq(registries.id, registryId));
+
+  revalidatePath(`/registries/${registryId}`);
+}
+
+// Any owner or co-owner can invite further co-owners — full parity, not
+// just the original owner (see docs/stories/invite-co-owner.md).
+export async function inviteCoOwner(registryId: string, formData: FormData) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const db = getDb();
+  await requireRegistryAccess(db, registryId, userId);
+
+  const email = (formData.get("email") as string).trim().toLowerCase();
+  if (!email || !email.includes("@")) {
+    throw new Error("Invalid email address.");
+  }
+
+  const [existing] = await db
+    .select({ id: registryInvitations.id })
+    .from(registryInvitations)
+    .where(
+      and(
+        eq(registryInvitations.registryId, registryId),
+        eq(registryInvitations.email, email),
+        eq(registryInvitations.status, "pending"),
+      ),
+    );
+
+  if (!existing) {
+    await db.insert(registryInvitations).values({
+      registryId,
+      email,
+      invitedByUserId: userId,
+    });
+  }
+
+  revalidatePath(`/registries/${registryId}`);
+}
+
+export async function cancelInvitation(registryId: string, invitationId: string) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const db = getDb();
+  await requireRegistryAccess(db, registryId, userId);
+
+  await db
+    .delete(registryInvitations)
+    .where(
+      and(
+        eq(registryInvitations.id, invitationId),
+        eq(registryInvitations.registryId, registryId),
+        eq(registryInvitations.status, "pending"),
+      ),
+    );
+
+  revalidatePath(`/registries/${registryId}`);
+}
+
+// Reserved for the original owner (requirePrimaryOwner), not any co-owner —
+// see the note on requirePrimaryOwner above.
+export async function removeCoOwner(registryId: string, invitationId: string) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const db = getDb();
+  await requirePrimaryOwner(db, registryId, userId);
+
+  await db
+    .delete(registryInvitations)
+    .where(
+      and(
+        eq(registryInvitations.id, invitationId),
+        eq(registryInvitations.registryId, registryId),
+        eq(registryInvitations.status, "accepted"),
+      ),
+    );
 
   revalidatePath(`/registries/${registryId}`);
 }
