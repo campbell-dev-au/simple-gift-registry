@@ -5,6 +5,10 @@ import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { registries, gifts, giftClaims, registrySaves } from "@/db/schema";
 import { claimGift, unclaimGift, saveRegistry, unsaveRegistry } from "./actions";
+import { Button, buttonClasses } from "@/components/button";
+import { Pill } from "@/components/pill";
+import { ClaimProgress } from "@/components/claim-progress";
+import { inputClass } from "@/components/field";
 
 export default async function SharePage({
   params,
@@ -62,23 +66,44 @@ export default async function SharePage({
     isSaved = !!save;
   }
 
+  const totalQuantity = registryGifts.reduce((sum, g) => sum + g.quantity, 0);
+  const totalClaimed = registryGifts.reduce((sum, gift) => {
+    const claimed = claims
+      .filter((c) => c.giftId === gift.id)
+      .reduce((s, c) => s + c.quantity, 0);
+    return sum + Math.min(claimed, gift.quantity);
+  }, 0);
+
   return (
-    <main className="flex flex-1 flex-col items-center gap-6 p-8 text-center">
-      <div>
-        <h1 className="text-2xl font-semibold">{registry.title}</h1>
-        {registry.eventDate && <p>Event date: {registry.eventDate}</p>}
+    <main className="flex flex-1 flex-col items-center gap-8 p-8">
+      <div className="w-full max-w-md">
+        <p className="text-xs font-semibold tracking-wide text-ink-dim uppercase">
+          You&rsquo;re invited
+        </p>
+        <h1 className="font-display mt-1 text-[26px] font-bold text-ink">
+          {registry.title}
+        </h1>
+        {registry.eventDate && (
+          <p className="mt-1.5 text-sm text-ink-dim">{registry.eventDate}</p>
+        )}
+
+        {totalQuantity > 0 && (
+          <div className="mt-4">
+            <ClaimProgress claimed={totalClaimed} total={totalQuantity} />
+          </div>
+        )}
 
         {userId && !isOwner && (
-          <div className="mt-2">
+          <div className="mt-4">
             {isSaved ? (
               <form action={unsaveRegistry.bind(null, token)}>
-                <button type="submit" className="text-sm underline">
+                <button type="submit" className={buttonClasses("text")}>
                   Remove from my registries
                 </button>
               </form>
             ) : (
               <form action={saveRegistry.bind(null, token)}>
-                <button type="submit" className="text-sm underline">
+                <button type="submit" className={buttonClasses("text")}>
                   Save to my registries
                 </button>
               </form>
@@ -87,8 +112,8 @@ export default async function SharePage({
         )}
 
         {!userId && (
-          <p className="mt-2 text-sm text-gray-500">
-            <Link href={signInUrl} className="underline">
+          <p className="mt-4 text-sm text-ink-dim">
+            <Link href={signInUrl} className="text-violet hover:underline">
               Sign in to save this registry
             </Link>{" "}
             to your account.
@@ -96,12 +121,14 @@ export default async function SharePage({
         )}
       </div>
 
-      <section className="flex w-full max-w-md flex-col gap-3 text-left">
-        <h2 className="text-lg font-medium">Gifts</h2>
+      <section className="flex w-full max-w-md flex-col gap-3">
+        <h2 className="font-display text-[17px] font-bold text-ink">
+          Gifts
+        </h2>
         {registryGifts.length === 0 ? (
-          <p className="text-gray-500">No gifts yet.</p>
+          <p className="text-sm text-ink-dim">No gifts yet.</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-2.5">
             {registryGifts.map((gift) => {
               const giftClaimsList = claims.filter(
                 (claim) => claim.giftId === gift.id,
@@ -115,32 +142,54 @@ export default async function SharePage({
                 (claim) => claim.claimedByUserId === userId,
               );
 
+              // Everyone sees the same general status regardless of who
+              // claimed what — myClaim below adds an extra, viewer-only
+              // "claimed by you" note, it never replaces this. Keeping the
+              // two separate is what stops a guest's own claim from also
+              // revealing (to them) whether the *general* status differs
+              // from what they personally claimed.
+              const tone =
+                claimedQuantity === 0
+                  ? "available"
+                  : remaining > 0
+                    ? "partial"
+                    : "claimed";
+              const label = remaining > 0 ? `${remaining} remaining` : "Claimed";
+
               return (
-                <li key={gift.id} className="rounded border p-3">
-                  <p className="font-medium">{gift.name}</p>
-                  <p className="text-sm text-gray-500">
-                    Quantity: {gift.quantity}
-                  </p>
-                  {gift.notes && (
-                    <p className="text-sm text-gray-500">{gift.notes}</p>
-                  )}
-                  <p className="text-sm text-gray-500">
-                    {remaining > 0 ? `${remaining} remaining` : "Claimed"}
-                  </p>
+                <li
+                  key={gift.id}
+                  className="rounded-2xl border border-line bg-surface p-4 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-ink">{gift.name}</p>
+                      <p className="mt-0.5 text-xs text-ink-dim">
+                        Quantity: {gift.quantity}
+                      </p>
+                      {gift.notes && (
+                        <p className="mt-1 text-xs text-ink-dim">
+                          {gift.notes}
+                        </p>
+                      )}
+                    </div>
+                    <Pill tone={tone}>{label}</Pill>
+                  </div>
 
                   {myClaim && (
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
+                    <div className="mt-3 flex items-center gap-3">
+                      <span className="text-sm text-ink-dim">
                         Claimed by you ({myClaim.quantity})
-                      </p>
+                      </span>
                       <form action={unclaimGift.bind(null, token, gift.id)}>
-                        <button
+                        <Button
                           type="submit"
+                          variant="ghost"
+                          size="sm"
                           aria-label={`Unclaim ${gift.name}`}
-                          className="text-sm underline"
                         >
                           Unclaim
-                        </button>
+                        </Button>
                       </form>
                     </div>
                   )}
@@ -148,7 +197,7 @@ export default async function SharePage({
                   {!myClaim && remaining > 0 && userId && (
                     <form
                       action={claimGift.bind(null, token, gift.id)}
-                      className="mt-2 flex items-center gap-2"
+                      className="mt-3 flex items-center gap-2"
                     >
                       <label
                         htmlFor={`quantity-${gift.id}`}
@@ -163,25 +212,26 @@ export default async function SharePage({
                         min={1}
                         max={remaining}
                         defaultValue={1}
-                        className="w-16 rounded border px-2 py-1 text-sm"
+                        className={`${inputClass} !w-16 py-1.5 text-center font-mono text-sm`}
                       />
-                      <button
+                      <Button
                         type="submit"
+                        variant="claim"
+                        size="sm"
                         aria-label={`Claim ${gift.name}`}
-                        className="rounded bg-black px-3 py-2 text-sm text-white"
                       >
                         Claim
-                      </button>
+                      </Button>
                     </form>
                   )}
 
                   {remaining > 0 && !userId && (
-                    <p className="mt-2 text-sm text-gray-500">
-                      <Link href={signInUrl} className="underline">
+                    <p className="mt-3 text-sm text-ink-dim">
+                      <Link href={signInUrl} className="text-violet hover:underline">
                         Sign in
                       </Link>{" "}
                       or{" "}
-                      <Link href={signUpUrl} className="underline">
+                      <Link href={signUpUrl} className="text-violet hover:underline">
                         create an account
                       </Link>{" "}
                       to claim this gift.

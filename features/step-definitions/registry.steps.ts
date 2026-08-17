@@ -59,10 +59,10 @@ Then("I am redirected to sign in", async ({ page }) => {
 
 When("I edit the registry's title", async ({ page, registry }) => {
   await page.goto(`/registries/${registry.id}`);
-  await page.getByRole("link", { name: "Edit registry" }).click();
-  // Wait for the client-side navigation to actually land before filling —
-  // see the equivalent gift-edit step for why this matters.
-  await page.getByRole("heading", { name: "Edit registry" }).waitFor();
+  await page.getByRole("button", { name: "Edit registry" }).click();
+  // Title editing happens inline (no navigation) — wait for the field
+  // itself to appear before filling, rather than a page-level signal.
+  await page.getByLabel("Registry title").waitFor();
   await page.getByLabel("Registry title").fill("Our Updated Wedding Registry");
   await page.getByRole("button", { name: "Save changes" }).click();
 });
@@ -75,7 +75,7 @@ Then("I see the updated title on the registry page", async ({ page }) => {
 
 Then("I do not see a way to edit the registry", async ({ page }) => {
   await expect(
-    page.getByRole("link", { name: "Edit registry" }),
+    page.getByRole("button", { name: "Edit registry" }),
   ).toHaveCount(0);
 });
 

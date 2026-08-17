@@ -94,17 +94,16 @@ Given("their registry has a gift", async ({ otherRegistry }) => {
 
 When("I edit the gift's details", async ({ page, registry }) => {
   await page.goto(`/registries/${registry.id}`);
-  await page
-    .getByRole("link", { name: `Edit ${EXISTING_GIFT_NAME}` })
-    .click();
-  // The registry page's own "Add a gift" form has a same-named "Gift name"
-  // field — wait for the client-side navigation to actually land on the
-  // edit page before filling, or these fills can hit the stale pre-nav DOM.
-  await page.getByRole("heading", { name: "Edit gift" }).waitFor();
-  await page.getByLabel("Gift name").fill("Electric Kettle");
-  await page.getByLabel("Notes (optional)").fill("Matte black please");
-  await page.getByLabel("Quantity").fill("3");
-  await page.getByRole("button", { name: "Save changes" }).click();
+  // The registry page's persistent "Add a gift" form has same-named
+  // "Gift name" / "Notes (optional)" / "Quantity" fields — scope to this
+  // gift's own card (a stable data-testid, unaffected by the rename below)
+  // so the fills below can't hit the Add-gift form's fields instead.
+  const card = page.getByTestId(`gift-card-${EXISTING_GIFT_NAME}`);
+  await card.getByRole("button", { name: `Edit ${EXISTING_GIFT_NAME}` }).click();
+  await card.getByLabel("Gift name").fill("Electric Kettle");
+  await card.getByLabel("Notes (optional)").fill("Matte black please");
+  await card.getByLabel("Quantity").fill("3");
+  await card.getByRole("button", { name: "Save changes" }).click();
 });
 
 Then(
@@ -134,7 +133,7 @@ Then(
 
 Then("I do not see a way to edit or remove that gift", async ({ page }) => {
   await expect(
-    page.getByRole("link", { name: `Edit ${EXISTING_GIFT_NAME}` }),
+    page.getByRole("button", { name: `Edit ${EXISTING_GIFT_NAME}` }),
   ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: `Remove ${EXISTING_GIFT_NAME}` }),

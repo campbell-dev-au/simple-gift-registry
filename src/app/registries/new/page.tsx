@@ -1,40 +1,48 @@
 import { createRegistry } from "./actions";
+import { Button } from "@/components/button";
+import { inputClass, labelClass } from "@/components/field";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 
 export default function NewRegistryPage() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
-      <h1 className="text-2xl font-semibold">Create a gift registry</h1>
-      <form
-        action={createRegistry}
-        className="flex w-full max-w-xs flex-col gap-3"
-      >
-        <label htmlFor="title" className="text-sm font-medium">
-          Registry title
-        </label>
-        <input
-          id="title"
-          name="title"
-          type="text"
-          required
-          className="rounded border px-3 py-2"
-        />
+    <main className="mx-auto flex w-full max-w-xs flex-1 flex-col justify-center gap-6 px-6 py-10">
+      <Breadcrumbs
+        items={[
+          { label: "Home", href: "/" },
+          { label: "My registries", href: "/registries" },
+          { label: "New registry" },
+        ]}
+      />
+      <h1 className="font-display text-2xl font-bold text-ink">
+        Create a gift registry
+      </h1>
+      <form action={createRegistry} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="title" className={labelClass}>
+            Registry title
+          </label>
+          <input
+            id="title"
+            name="title"
+            type="text"
+            required
+            className={inputClass}
+          />
+        </div>
 
-        <label htmlFor="eventDate" className="text-sm font-medium">
-          Event date (optional)
-        </label>
-        <input
-          id="eventDate"
-          name="eventDate"
-          type="date"
-          className="rounded border px-3 py-2"
-        />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="eventDate" className={labelClass}>
+            Event date (optional)
+          </label>
+          <input
+            id="eventDate"
+            name="eventDate"
+            type="date"
+            className={inputClass}
+          />
+        </div>
 
-        <button
-          type="submit"
-          className="rounded bg-black py-2 text-white"
-        >
-          Create registry
-        </button>
+        <Button type="submit">Create registry</Button>
       </form>
     </main>
   );

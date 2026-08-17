@@ -121,7 +121,7 @@ Then("I do not see the registry in my registries list", async ({ page }) => {
 Then("I can edit the registry", async ({ page }) => {
   await page.getByRole("link", { name: INVITED_REGISTRY_TITLE }).click();
   await page.getByRole("heading", { name: INVITED_REGISTRY_TITLE }).waitFor();
-  await expect(page.getByRole("link", { name: "Edit registry" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit registry" })).toBeVisible();
 });
 
 When("I remove that co-owner", async ({ page }) => {
@@ -167,15 +167,21 @@ Given(
 Then(
   "I see the owner's email listed as a co-owner",
   async ({ page, otherAccount }) => {
-    await expect(page.getByText(otherAccount.email)).toBeVisible();
+    await expect(
+      page.getByTestId("co-owners-section").getByText(otherAccount.email),
+    ).toBeVisible();
   },
 );
 
 Then(
   "I do not see my own email listed as a co-owner",
   async ({ page, account }) => {
-    await expect(page.getByText(account.email, { exact: true })).toHaveCount(
-      0,
-    );
+    // Scoped to the co-owners section, not the whole page — the signed-in
+    // account's own email legitimately appears once in the site header.
+    await expect(
+      page
+        .getByTestId("co-owners-section")
+        .getByText(account.email, { exact: true }),
+    ).toHaveCount(0);
   },
 );

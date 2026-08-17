@@ -3,6 +3,8 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useSignUp } from "@clerk/nextjs";
+import { Button } from "@/components/button";
+import { inputClass, labelClass } from "@/components/field";
 
 export default function SignUpPage() {
   return (
@@ -80,84 +82,93 @@ function SignUpForm() {
     signUp.missingFields.length === 0
   ) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
-        <h1 className="text-2xl font-semibold">Verify your account</h1>
+      <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
+        <h1 className="font-display text-2xl font-bold text-ink">
+          Verify your account
+        </h1>
         <form
           onSubmit={handleVerify}
-          className="flex w-full max-w-xs flex-col gap-3"
+          className="flex w-full max-w-xs flex-col gap-4"
         >
-          <label htmlFor="code" className="text-sm font-medium">
-            Verification code
-          </label>
-          <input
-            id="code"
-            name="code"
-            type="text"
-            value={code}
-            onChange={(event) => setCode(event.target.value)}
-            className="rounded border px-3 py-2"
-          />
-          {errors?.fields.code && (
-            <p className="text-sm text-red-600">{errors.fields.code.message}</p>
-          )}
-          <button
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="code" className={labelClass}>
+              Verification code
+            </label>
+            <input
+              id="code"
+              name="code"
+              type="text"
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              className={inputClass}
+            />
+            {errors?.fields.code && (
+              <p className="text-sm text-coral">
+                {errors.fields.code.message}
+              </p>
+            )}
+          </div>
+          <Button
             type="submit"
             disabled={fetchStatus === "fetching" || !emailCodeSent}
-            className="rounded bg-black py-2 text-white"
           >
             Verify
-          </button>
+          </Button>
         </form>
       </main>
     );
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
-      <h1 className="text-2xl font-semibold">Create an account</h1>
+    <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
+      <h1 className="font-display text-2xl font-bold text-ink">
+        Create an account
+      </h1>
       <form
         onSubmit={handleSubmit}
-        className="flex w-full max-w-xs flex-col gap-3"
+        className="flex w-full max-w-xs flex-col gap-4"
       >
-        <label htmlFor="email" className="text-sm font-medium">
-          Email address
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          className="rounded border px-3 py-2"
-        />
-        {errors?.fields.emailAddress && (
-          <p className="text-sm text-red-600">
-            {errors.fields.emailAddress.message}
-          </p>
-        )}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="email" className={labelClass}>
+            Email address
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className={inputClass}
+          />
+          {errors?.fields.emailAddress && (
+            <p className="text-sm text-coral">
+              {errors.fields.emailAddress.message}
+            </p>
+          )}
+        </div>
 
-        <label htmlFor="password" className="text-sm font-medium">
-          Password
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          className="rounded border px-3 py-2"
-        />
-        {errors?.fields.password && (
-          <p className="text-sm text-red-600">{errors.fields.password.message}</p>
-        )}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="password" className={labelClass}>
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className={inputClass}
+          />
+          {errors?.fields.password && (
+            <p className="text-sm text-coral">
+              {errors.fields.password.message}
+            </p>
+          )}
+        </div>
 
-        <button
-          type="submit"
-          disabled={fetchStatus === "fetching"}
-          className="rounded bg-black py-2 text-white"
-        >
+        <Button type="submit" disabled={fetchStatus === "fetching"}>
           Continue
-        </button>
+        </Button>
       </form>
       {/* Required for sign-up flows — Clerk's bot sign-up protection is enabled by default */}
       <div id="clerk-captcha" />

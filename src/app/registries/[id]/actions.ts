@@ -79,7 +79,7 @@ export async function updateRegistry(registryId: string, formData: FormData) {
     .where(eq(registries.id, registryId));
 
   revalidatePath(`/registries/${registryId}`);
-  redirect(`/registries/${registryId}`);
+  revalidatePath("/registries");
 }
 
 export async function updateGift(
@@ -107,7 +107,6 @@ export async function updateGift(
     .where(and(eq(gifts.id, giftId), eq(gifts.registryId, registryId)));
 
   revalidatePath(`/registries/${registryId}`);
-  redirect(`/registries/${registryId}`);
 }
 
 export async function deleteGift(registryId: string, giftId: string) {
@@ -227,6 +226,25 @@ export async function cancelInvitation(registryId: string, invitationId: string)
     );
 
   revalidatePath(`/registries/${registryId}`);
+}
+
+// Off by default (see reveal_claims in src/db/schema.ts) — the manage page
+// gates turning this on behind a confirmation dialog since an owner is
+// often also a recipient. Turning it back off needs no such confirmation.
+export async function setClaimVisibility(registryId: string, reveal: boolean) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const db = getDb();
+  await requireRegistryAccess(db, registryId, userId);
+
+  await db
+    .update(registries)
+    .set({ revealClaims: reveal })
+    .where(eq(registries.id, registryId));
+
+  revalidatePath(`/registries/${registryId}`);
+  revalidatePath("/registries");
 }
 
 // Reserved for the original owner (requirePrimaryOwner), not any co-owner —

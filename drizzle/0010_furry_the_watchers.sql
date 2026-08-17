@@ -1,0 +1,1 @@
+ALTER TABLE "registries" ADD COLUMN "reveal_claims" boolean DEFAULT false NOT NULL;

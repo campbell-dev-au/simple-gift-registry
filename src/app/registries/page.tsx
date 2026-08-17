@@ -4,6 +4,11 @@ import { eq, and, inArray } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { registries, registryInvitations, registrySaves } from "@/db/schema";
+import { getClaimSummaries } from "@/lib/registry-claims";
+import { Button, buttonClasses } from "@/components/button";
+import { ClaimProgress } from "@/components/claim-progress";
+import { sectionTitleClass } from "@/components/field";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   acceptInvitation,
   declineInvitation,
@@ -29,6 +34,7 @@ export default async function RegistriesPage() {
       archivedAt: registries.archivedAt,
       ownerId: registries.ownerId,
       shareToken: registries.shareToken,
+      revealClaims: registries.revealClaims,
       createdAt: registries.createdAt,
     })
     .from(registryInvitations)
@@ -89,37 +95,55 @@ export default async function RegistriesPage() {
   const activeRegistries = myRegistries.filter((r) => !r.archivedAt);
   const archivedRegistries = myRegistries.filter((r) => r.archivedAt);
 
+  // Only pull claim data for registries the viewer has explicitly opted
+  // into seeing (see reveal_claims in src/db/schema.ts) — owned/co-owned
+  // registries stay a surprise by default. Saved registries are always
+  // someone else's, so there's no surprise to protect there.
+  const claimSummaries = await getClaimSummaries(db, [
+    ...myRegistries.filter((r) => r.revealClaims).map((r) => r.id),
+    ...savedRegistries.map((r) => r.id),
+  ]);
+
   return (
-    <main className="flex flex-1 flex-col items-center gap-6 p-8 text-center">
-      <h1 className="text-2xl font-semibold">My registries</h1>
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-10">
+      <div className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "My registries" }]} />
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="font-display text-2xl font-bold text-ink">
+            My registries
+          </h1>
+          <Link href="/registries/new" className={buttonClasses("primary")}>
+            + Create a gift registry
+          </Link>
+        </div>
+      </div>
 
       {pendingInvitations.length > 0 && (
-        <section className="flex w-full max-w-md flex-col gap-3 text-left">
-          <h2 className="text-lg font-medium">Invitations</h2>
-          <ul className="flex flex-col gap-2">
+        <section className="flex flex-col gap-3">
+          <h2 className={sectionTitleClass}>Invitations</h2>
+          <ul className="grid gap-2.5 sm:grid-cols-2">
             {pendingInvitations.map((invitation) => (
-              <li key={invitation.id} className="rounded border p-3">
-                <p>
+              <li
+                key={invitation.id}
+                className="rounded-2xl border border-line bg-surface p-4 shadow-sm"
+              >
+                <p className="text-sm text-ink">
                   You&apos;ve been invited to co-own{" "}
-                  <span className="font-medium">
+                  <span className="font-semibold">
                     {invitation.registryTitle}
                   </span>
                   .
                 </p>
-                <div className="mt-2 flex gap-3">
-                  <form
-                    action={acceptInvitation.bind(null, invitation.id)}
-                  >
-                    <button type="submit" className="text-sm underline">
+                <div className="mt-3 flex gap-3">
+                  <form action={acceptInvitation.bind(null, invitation.id)}>
+                    <Button type="submit" size="sm">
                       Accept
-                    </button>
+                    </Button>
                   </form>
-                  <form
-                    action={declineInvitation.bind(null, invitation.id)}
-                  >
-                    <button type="submit" className="text-sm underline">
+                  <form action={declineInvitation.bind(null, invitation.id)}>
+                    <Button type="submit" variant="ghost" size="sm">
                       Decline
-                    </button>
+                    </Button>
                   </form>
                 </div>
               </li>
@@ -129,67 +153,109 @@ export default async function RegistriesPage() {
       )}
 
       {myRegistries.length === 0 ? (
-        <p className="text-gray-500">You don&apos;t have any registries yet.</p>
+        <p className="text-sm text-ink-dim">
+          You don&apos;t have any registries yet.
+        </p>
       ) : activeRegistries.length === 0 ? (
-        <p className="text-gray-500">You don&apos;t have any active registries.</p>
+        <p className="text-sm text-ink-dim">
+          You don&apos;t have any active registries.
+        </p>
       ) : (
-        <ul className="flex w-full max-w-md flex-col gap-2 text-left">
-          {activeRegistries.map((registry) => (
-            <li key={registry.id} className="rounded border p-3">
-              <Link
-                href={`/registries/${registry.id}`}
-                className="font-medium underline"
-              >
-                {registry.title}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <section className="flex flex-col gap-3">
+          <h2 className={sectionTitleClass}>Active</h2>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {activeRegistries.map((registry) => {
+              const summary = claimSummaries.get(registry.id);
+              return (
+                <li
+                  key={registry.id}
+                  className="rounded-2xl border border-line bg-surface p-4 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <Link
+                        href={`/registries/${registry.id}`}
+                        className="font-semibold text-ink hover:text-violet"
+                      >
+                        {registry.title}
+                      </Link>
+                      {registry.eventDate && (
+                        <p className="mt-0.5 text-xs text-ink-dim">
+                          {registry.eventDate}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {summary && summary.total > 0 && (
+                    <div className="mt-3">
+                      <ClaimProgress
+                        claimed={summary.claimed}
+                        total={summary.total}
+                      />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
-      <Link href="/registries/new" className="underline">
-        Create a gift registry
-      </Link>
-
       {savedRegistries.length > 0 && (
-        <section className="flex w-full max-w-md flex-col gap-3 text-left">
-          <h2 className="text-lg font-medium">Saved registries</h2>
-          <ul className="flex flex-col gap-2">
-            {savedRegistries.map((registry) => (
-              <li
-                key={registry.id}
-                className="flex items-center justify-between rounded border p-3"
-              >
-                <Link
-                  href={`/share/${registry.shareToken}`}
-                  className="font-medium underline"
+        <section className="flex flex-col gap-3">
+          <h2 className={sectionTitleClass}>Saved registries</h2>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {savedRegistries.map((registry) => {
+              const summary = claimSummaries.get(registry.id);
+              return (
+                <li
+                  key={registry.id}
+                  className="rounded-2xl border border-line bg-surface p-4 shadow-sm"
                 >
-                  {registry.title}
-                </Link>
-                <form action={removeSavedRegistry.bind(null, registry.id)}>
-                  <button
-                    type="submit"
-                    aria-label={`Remove ${registry.title} from my registries`}
-                    className="text-sm underline"
-                  >
-                    Remove
-                  </button>
-                </form>
-              </li>
-            ))}
+                  <div className="flex items-start justify-between gap-3">
+                    <Link
+                      href={`/share/${registry.shareToken}`}
+                      className="font-semibold text-ink hover:text-violet"
+                    >
+                      {registry.title}
+                    </Link>
+                    <form action={removeSavedRegistry.bind(null, registry.id)}>
+                      <button
+                        type="submit"
+                        aria-label={`Remove ${registry.title} from my registries`}
+                        className={buttonClasses("text", "sm")}
+                      >
+                        Remove
+                      </button>
+                    </form>
+                  </div>
+                  {summary && summary.total > 0 && (
+                    <div className="mt-3">
+                      <ClaimProgress
+                        claimed={summary.claimed}
+                        total={summary.total}
+                      />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
 
       {archivedRegistries.length > 0 && (
-        <section className="flex w-full max-w-md flex-col gap-3 text-left">
-          <h2 className="text-lg font-medium">Archived registries</h2>
-          <ul className="flex flex-col gap-2">
+        <section className="flex flex-col gap-3">
+          <h2 className={sectionTitleClass}>Archived registries</h2>
+          <ul className="grid gap-3 sm:grid-cols-2">
             {archivedRegistries.map((registry) => (
-              <li key={registry.id} className="rounded border p-3">
+              <li
+                key={registry.id}
+                className="rounded-2xl border border-line bg-surface p-4 opacity-60 shadow-sm"
+              >
                 <Link
                   href={`/registries/${registry.id}`}
-                  className="font-medium underline"
+                  className="font-semibold text-ink hover:text-violet"
                 >
                   {registry.title}
                 </Link>

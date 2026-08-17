@@ -5,6 +5,7 @@ import {
   date,
   timestamp,
   integer,
+  boolean,
   unique,
 } from "drizzle-orm/pg-core";
 
@@ -18,6 +19,13 @@ export const registries = pgTable("registries", {
   // from `id` so a leaked link can be invalidated (regenerate) without
   // touching the registry's real identifier or any FKs pointing at it.
   shareToken: uuid("share_token").notNull().defaultRandom().unique(),
+  // Off by default: an owner/co-owner managing the registry is very often
+  // also a recipient (a wedding couple, a birthday person), so claim status
+  // stays hidden from them unless they explicitly opt in — see
+  // setClaimVisibility in registries/[id]/actions.ts, which requires the
+  // opt-in to go through a confirmation step. Guests always see remaining
+  // counts via /share/[token]; this only gates the owner-facing view.
+  revealClaims: boolean("reveal_claims").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

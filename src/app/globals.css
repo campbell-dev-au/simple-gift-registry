@@ -1,26 +1,57 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --canvas: #f6f6fa;
+  --surface: #ffffff;
+  --ink: #16161d;
+  --ink-dim: #6b6b78;
+  --violet: #6647e0;
+  --violet-ink: #ffffff;
+  --coral: #ff6b4a;
+  --coral-ink: #22110a;
+  --mint: #1b9a73;
+  --amber: #b8790e;
+  --line: #e7e6ef;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-dim: var(--ink-dim);
+  --color-violet: var(--violet);
+  --color-violet-ink: var(--violet-ink);
+  --color-coral: var(--coral);
+  --color-coral-ink: var(--coral-ink);
+  --color-mint: var(--mint);
+  --color-amber: var(--amber);
+  --color-line: var(--line);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-schibsted);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+    --canvas: #131318;
+    --surface: #1c1c24;
+    --ink: #f1f0f5;
+    --ink-dim: #9c9aa8;
+    --violet: #8e7fff;
+    --violet-ink: #14101f;
+    --coral: #ff8567;
+    --coral-ink: #1f0d06;
+    --mint: #35c296;
+    --amber: #e0a233;
+    --line: #302f3a;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family:
+    var(--font-sans), -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
