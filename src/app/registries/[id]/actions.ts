@@ -8,6 +8,14 @@ import { eq, and } from "drizzle-orm";
 import { getDb } from "@/db";
 import { registries, gifts, registryInvitations } from "@/db/schema";
 import { canManageRegistry } from "@/lib/registry-access";
+import {
+  assertMaxLength,
+  TITLE_MAX_LENGTH,
+  GIFT_NAME_MAX_LENGTH,
+  NOTES_MAX_LENGTH,
+  EMAIL_MAX_LENGTH,
+  QUANTITY_MAX,
+} from "@/lib/field-limits";
 
 type Db = ReturnType<typeof getDb>;
 
@@ -52,12 +60,17 @@ export async function addGift(registryId: string, formData: FormData) {
   const name = formData.get("name") as string;
   const notes = formData.get("notes") as string;
   const quantity = Number.parseInt(formData.get("quantity") as string, 10);
+  assertMaxLength(name, GIFT_NAME_MAX_LENGTH, "Gift name");
+  assertMaxLength(notes ?? "", NOTES_MAX_LENGTH, "Notes");
 
   await db.insert(gifts).values({
     registryId,
     name,
     notes: notes || null,
-    quantity: Number.isInteger(quantity) && quantity > 0 ? quantity : 1,
+    quantity:
+      Number.isInteger(quantity) && quantity > 0
+        ? Math.min(quantity, QUANTITY_MAX)
+        : 1,
   });
 
   revalidatePath(`/registries/${registryId}`);
@@ -72,6 +85,7 @@ export async function updateRegistry(registryId: string, formData: FormData) {
 
   const title = formData.get("title") as string;
   const eventDate = formData.get("eventDate") as string;
+  assertMaxLength(title, TITLE_MAX_LENGTH, "Registry title");
 
   await db
     .update(registries)
@@ -96,13 +110,18 @@ export async function updateGift(
   const name = formData.get("name") as string;
   const notes = formData.get("notes") as string;
   const quantity = Number.parseInt(formData.get("quantity") as string, 10);
+  assertMaxLength(name, GIFT_NAME_MAX_LENGTH, "Gift name");
+  assertMaxLength(notes ?? "", NOTES_MAX_LENGTH, "Notes");
 
   await db
     .update(gifts)
     .set({
       name,
       notes: notes || null,
-      quantity: Number.isInteger(quantity) && quantity > 0 ? quantity : 1,
+      quantity:
+        Number.isInteger(quantity) && quantity > 0
+          ? Math.min(quantity, QUANTITY_MAX)
+          : 1,
     })
     .where(and(eq(gifts.id, giftId), eq(gifts.registryId, registryId)));
 
@@ -185,6 +204,7 @@ export async function inviteCoOwner(registryId: string, formData: FormData) {
   if (!email || !email.includes("@")) {
     throw new Error("Invalid email address.");
   }
+  assertMaxLength(email, EMAIL_MAX_LENGTH, "Email address");
 
   const [existing] = await db
     .select({ id: registryInvitations.id })

@@ -2,6 +2,7 @@ import { createRegistry } from "./actions";
 import { Button } from "@/components/button";
 import { inputClass, labelClass } from "@/components/field";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { TITLE_MAX_LENGTH } from "@/lib/field-limits";
 
 export default function NewRegistryPage() {
   return (
@@ -26,6 +27,7 @@ export default function NewRegistryPage() {
             name="title"
             type="text"
             required
+            maxLength={TITLE_MAX_LENGTH}
             className={inputClass}
           />
         </div>

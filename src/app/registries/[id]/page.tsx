@@ -13,6 +13,7 @@ import { Avatar } from "@/components/avatar";
 import { IconLink, IconUsers, IconGift } from "@/components/icons";
 import { inputClass, labelClass, sectionTitleClass } from "@/components/field";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { EMAIL_MAX_LENGTH } from "@/lib/field-limits";
 import { RegistryTitleEditor } from "@/components/registry-title-editor";
 import { AddGiftForm } from "@/components/add-gift-form";
 import { GiftCard } from "@/components/gift-card";
@@ -352,6 +353,7 @@ export default async function RegistryPage({
                     name="email"
                     type="email"
                     required
+                    maxLength={EMAIL_MAX_LENGTH}
                     className={inputClass}
                   />
                   <Button type="submit" size="sm">

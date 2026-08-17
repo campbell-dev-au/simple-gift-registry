@@ -5,6 +5,11 @@ import { buttonClasses, Button } from "@/components/button";
 import { Pill, type PillTone } from "@/components/pill";
 import { inputClass, labelClass } from "@/components/field";
 import { updateGift, deleteGift } from "@/app/registries/[id]/actions";
+import {
+  GIFT_NAME_MAX_LENGTH,
+  NOTES_MAX_LENGTH,
+  QUANTITY_MAX,
+} from "@/lib/field-limits";
 
 type Gift = {
   id: string;
@@ -51,6 +56,7 @@ export function GiftCard({
               name="name"
               type="text"
               required
+              maxLength={GIFT_NAME_MAX_LENGTH}
               defaultValue={gift.name}
               className={inputClass}
             />
@@ -63,6 +69,7 @@ export function GiftCard({
             <textarea
               id={`notes-${gift.id}`}
               name="notes"
+              maxLength={NOTES_MAX_LENGTH}
               defaultValue={gift.notes ?? ""}
               className={inputClass}
             />
@@ -77,6 +84,7 @@ export function GiftCard({
               name="quantity"
               type="number"
               min="1"
+              max={QUANTITY_MAX}
               defaultValue={gift.quantity}
               className={inputClass}
             />

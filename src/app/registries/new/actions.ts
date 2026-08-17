@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { registries } from "@/db/schema";
+import { assertMaxLength, TITLE_MAX_LENGTH } from "@/lib/field-limits";
 
 export async function createRegistry(formData: FormData) {
   const { userId } = await auth();
@@ -11,6 +12,7 @@ export async function createRegistry(formData: FormData) {
 
   const title = formData.get("title") as string;
   const eventDate = formData.get("eventDate") as string;
+  assertMaxLength(title, TITLE_MAX_LENGTH, "Registry title");
 
   const [registry] = await getDb()
     .insert(registries)

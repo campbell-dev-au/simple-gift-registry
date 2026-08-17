@@ -5,6 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useSignIn } from "@clerk/nextjs";
 import { Button } from "@/components/button";
 import { inputClass, labelClass } from "@/components/field";
+import { EMAIL_MAX_LENGTH } from "@/lib/field-limits";
+
+const PASSWORD_MAX_LENGTH = 128;
+const MFA_CODE_MAX_LENGTH = 10;
 
 export default function SignInPage() {
   return (
@@ -106,6 +110,7 @@ function SignInForm() {
               id="code"
               name="code"
               type="text"
+              maxLength={MFA_CODE_MAX_LENGTH}
               value={code}
               onChange={(event) => setCode(event.target.value)}
               className={inputClass}
@@ -142,6 +147,7 @@ function SignInForm() {
             id="email"
             name="email"
             type="email"
+            maxLength={EMAIL_MAX_LENGTH}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             className={inputClass}
@@ -161,6 +167,7 @@ function SignInForm() {
             id="password"
             name="password"
             type="password"
+            maxLength={PASSWORD_MAX_LENGTH}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className={inputClass}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, buttonClasses } from "@/components/button";
 import { inputClass, labelClass } from "@/components/field";
 import { updateRegistry } from "@/app/registries/[id]/actions";
+import { TITLE_MAX_LENGTH } from "@/lib/field-limits";
 
 export function RegistryTitleEditor({
   registryId,
@@ -35,6 +36,7 @@ export function RegistryTitleEditor({
             name="title"
             type="text"
             required
+            maxLength={TITLE_MAX_LENGTH}
             defaultValue={title}
             className={`${inputClass} font-display text-lg font-bold`}
           />

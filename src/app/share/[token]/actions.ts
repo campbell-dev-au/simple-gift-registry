@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { eq, and, sql, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import { registries, gifts, giftClaims, registrySaves } from "@/db/schema";
+import { QUANTITY_MAX } from "@/lib/field-limits";
 
 async function requireRegistryByShareToken(
   db: ReturnType<typeof getDb>,
@@ -35,7 +36,11 @@ export async function claimGift(
     formData.get("quantity") as string,
     10,
   );
-  if (!Number.isInteger(requestedQuantity) || requestedQuantity < 1) {
+  if (
+    !Number.isInteger(requestedQuantity) ||
+    requestedQuantity < 1 ||
+    requestedQuantity > QUANTITY_MAX
+  ) {
     throw new Error("Invalid quantity.");
   }
 

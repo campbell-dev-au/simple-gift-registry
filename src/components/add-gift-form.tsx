@@ -4,6 +4,11 @@ import { useRef } from "react";
 import { Button } from "@/components/button";
 import { inputClass, labelClass, sectionTitleClass } from "@/components/field";
 import { addGift } from "@/app/registries/[id]/actions";
+import {
+  GIFT_NAME_MAX_LENGTH,
+  NOTES_MAX_LENGTH,
+  QUANTITY_MAX,
+} from "@/lib/field-limits";
 
 export function AddGiftForm({ registryId }: { registryId: string }) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -30,15 +35,9 @@ export function AddGiftForm({ registryId }: { registryId: string }) {
             name="name"
             type="text"
             required
+            maxLength={GIFT_NAME_MAX_LENGTH}
             className={inputClass}
           />
-        </div>
-
-        <div className="flex flex-1 flex-col gap-1.5">
-          <label htmlFor="add-gift-notes" className={labelClass}>
-            Notes (optional)
-          </label>
-          <input id="add-gift-notes" name="notes" type="text" className={inputClass} />
         </div>
 
         <div className="flex w-20 flex-col gap-1.5">
@@ -50,12 +49,26 @@ export function AddGiftForm({ registryId }: { registryId: string }) {
             name="quantity"
             type="number"
             min="1"
+            max={QUANTITY_MAX}
             defaultValue={1}
             className={inputClass}
           />
         </div>
 
         <Button type="submit">Add gift</Button>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="add-gift-notes" className={labelClass}>
+          Notes (optional)
+        </label>
+        <textarea
+          id="add-gift-notes"
+          name="notes"
+          rows={2}
+          maxLength={NOTES_MAX_LENGTH}
+          className={inputClass}
+        />
       </div>
     </form>
   );
