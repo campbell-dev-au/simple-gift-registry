@@ -1,5 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { buttonClasses } from "@/components/button";
 import { IconGift } from "@/components/icons";
 
 export default async function Home() {
@@ -22,6 +24,14 @@ export default async function Home() {
           Build a registry, share one link, and let guests claim gifts
           without doubling up.
         </p>
+      </div>
+      <div className="flex items-center gap-3">
+        <Link href="/sign-up" className={buttonClasses("primary")}>
+          Create account
+        </Link>
+        <Link href="/sign-in" className={buttonClasses("ghost")}>
+          Sign in
+        </Link>
       </div>
     </main>
   );

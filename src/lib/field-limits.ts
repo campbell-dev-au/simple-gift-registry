@@ -9,6 +9,7 @@ export const NOTES_MAX_LENGTH = 1000;
 export const EMAIL_MAX_LENGTH = 254;
 export const QUANTITY_MAX = 999;
 export const NAME_MAX_LENGTH = 100;
+export const PASSWORD_MAX_LENGTH = 128;
 
 export function assertMaxLength(
   value: string,

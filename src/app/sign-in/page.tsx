@@ -2,13 +2,15 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth, useSignIn } from "@clerk/nextjs";
 import { Button } from "@/components/button";
+import { IconGoogle } from "@/components/icons";
 import { inputClass, labelClass } from "@/components/field";
-import { EMAIL_MAX_LENGTH } from "@/lib/field-limits";
+import { EMAIL_MAX_LENGTH, PASSWORD_MAX_LENGTH } from "@/lib/field-limits";
 
-const PASSWORD_MAX_LENGTH = 128;
 const MFA_CODE_MAX_LENGTH = 10;
+const RESET_CODE_MAX_LENGTH = 10;
 
 export default function SignInPage() {
   return (
@@ -38,6 +40,13 @@ function SignInForm() {
   const [deviceCodeSent, setDeviceCodeSent] = useState(false);
   const codeSentRef = useRef(false);
   const finalizedRef = useRef(false);
+
+  const [view, setView] = useState<"sign-in" | "forgot-password">("sign-in");
+  const [resetStep, setResetStep] = useState<"request" | "verify">("request");
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [resetCodeSent, setResetCodeSent] = useState(false);
 
   const needsDeviceVerification = signIn.status === "needs_client_trust";
 
@@ -86,6 +95,50 @@ function SignInForm() {
     await signIn.mfa.verifyEmailCode({ code });
   };
 
+  // signIn.create() (called when requesting a reset code) leaves the
+  // attempt pending a "reset_password_email_code" first factor until it's
+  // completed. Without resetting here, backing out and trying Google or a
+  // normal password sign-in silently no-ops — Clerk won't switch strategies
+  // on an attempt that already has one in flight.
+  const handleBackToSignIn = () => {
+    signIn.reset();
+    setView("sign-in");
+  };
+
+  const handleGoogleSignIn = async () => {
+    await signIn.sso({
+      strategy: "oauth_google",
+      redirectUrl,
+      redirectCallbackUrl: "/sso-callback",
+    });
+  };
+
+  const handleRequestReset = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const { error } = await signIn.create({ identifier: resetEmail });
+    if (error) return;
+
+    const { error: sendError } = await signIn.resetPasswordEmailCode.sendCode();
+    if (sendError) return;
+
+    setResetCodeSent(true);
+    setResetStep("verify");
+  };
+
+  // On success signIn.status flips to "complete" and the finalize effect
+  // above takes over, same as the password and device-verification flows.
+  const handleResetPassword = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const { error } = await signIn.resetPasswordEmailCode.verifyCode({
+      code: resetCode,
+    });
+    if (error) return;
+
+    await signIn.resetPasswordEmailCode.submitPassword({
+      password: newPassword,
+    });
+  };
+
   if (signIn.status === "complete" || isSignedIn) {
     return null;
   }
@@ -132,9 +185,149 @@ function SignInForm() {
     );
   }
 
+  if (view === "forgot-password") {
+    if (resetStep === "request") {
+      return (
+        <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
+          <h1 className="font-display text-2xl font-bold text-ink">
+            Reset your password
+          </h1>
+          <form
+            onSubmit={handleRequestReset}
+            className="flex w-full max-w-xs flex-col gap-4"
+          >
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="resetEmail" className={labelClass}>
+                Email address
+              </label>
+              <input
+                id="resetEmail"
+                name="resetEmail"
+                type="email"
+                maxLength={EMAIL_MAX_LENGTH}
+                value={resetEmail}
+                onChange={(event) => setResetEmail(event.target.value)}
+                className={inputClass}
+              />
+              {errors?.fields.identifier && (
+                <p className="text-sm text-coral">
+                  {errors.fields.identifier.message}
+                </p>
+              )}
+            </div>
+            <Button type="submit" disabled={fetchStatus === "fetching"}>
+              Send reset code
+            </Button>
+          </form>
+          {errors?.global && errors.global.length > 0 && (
+            <p className="text-sm text-coral">
+              {errors.global[0]?.message ?? "Something went wrong."}
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="text"
+            onClick={handleBackToSignIn}
+          >
+            Back to sign in
+          </Button>
+        </main>
+      );
+    }
+
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
+        <h1 className="font-display text-2xl font-bold text-ink">
+          Check your email
+        </h1>
+        <form
+          onSubmit={handleResetPassword}
+          className="flex w-full max-w-xs flex-col gap-4"
+        >
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="resetCode" className={labelClass}>
+              Verification code
+            </label>
+            <input
+              id="resetCode"
+              name="resetCode"
+              type="text"
+              maxLength={RESET_CODE_MAX_LENGTH}
+              value={resetCode}
+              onChange={(event) => setResetCode(event.target.value)}
+              className={inputClass}
+            />
+            {errors?.fields.code && (
+              <p className="text-sm text-coral">
+                {errors.fields.code.message}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="newPassword" className={labelClass}>
+              New password
+            </label>
+            <input
+              id="newPassword"
+              name="newPassword"
+              type="password"
+              maxLength={PASSWORD_MAX_LENGTH}
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              className={inputClass}
+            />
+            {errors?.fields.password && (
+              <p className="text-sm text-coral">
+                {errors.fields.password.message}
+              </p>
+            )}
+          </div>
+          <Button
+            type="submit"
+            disabled={fetchStatus === "fetching" || !resetCodeSent}
+          >
+            Reset password
+          </Button>
+        </form>
+        {errors?.global && errors.global.length > 0 && (
+          <p className="text-sm text-coral">
+            {errors.global[0]?.message ?? "Something went wrong."}
+          </p>
+        )}
+        <Button
+          type="button"
+          variant="text"
+          onClick={() => setView("sign-in")}
+        >
+          Back to sign in
+        </Button>
+      </main>
+    );
+  }
+
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
       <h1 className="font-display text-2xl font-bold text-ink">Sign in</h1>
+      <div className="flex w-full max-w-xs flex-col gap-4">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={handleGoogleSignIn}
+          disabled={fetchStatus === "fetching"}
+          className="w-full gap-2"
+        >
+          <IconGoogle className="h-4 w-4" />
+          Continue with Google
+        </Button>
+
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-line" />
+          <span className="text-xs font-medium uppercase tracking-wide text-ink-dim">
+            or
+          </span>
+          <div className="h-px flex-1 bg-line" />
+        </div>
+      </div>
       <form
         onSubmit={handleSubmit}
         className="flex w-full max-w-xs flex-col gap-4"
@@ -188,6 +381,26 @@ function SignInForm() {
           {errors.global[0]?.message ?? "Something went wrong."}
         </p>
       )}
+      <div className="flex items-center gap-4">
+        <Button
+          type="button"
+          variant="text"
+          onClick={() => {
+            setResetEmail(email);
+            setResetStep("request");
+            setResetCodeSent(false);
+            setView("forgot-password");
+          }}
+        >
+          Forgot password?
+        </Button>
+        <Link
+          href={`/sign-up?redirect_url=${encodeURIComponent(redirectUrl)}`}
+          className="text-sm font-semibold text-violet hover:underline underline-offset-2"
+        >
+          Create account
+        </Link>
+      </div>
     </main>
   );
 }

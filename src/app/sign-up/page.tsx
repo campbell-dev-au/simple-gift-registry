@@ -4,10 +4,14 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useSignUp } from "@clerk/nextjs";
 import { Button } from "@/components/button";
+import { IconGoogle } from "@/components/icons";
 import { inputClass, labelClass } from "@/components/field";
-import { EMAIL_MAX_LENGTH, NAME_MAX_LENGTH } from "@/lib/field-limits";
+import {
+  EMAIL_MAX_LENGTH,
+  NAME_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
+} from "@/lib/field-limits";
 
-const PASSWORD_MAX_LENGTH = 128;
 const EMAIL_CODE_MAX_LENGTH = 10;
 
 export default function SignUpPage() {
@@ -56,9 +60,8 @@ function SignUpForm() {
     const { error } = await signUp.password({
       emailAddress: email,
       password,
-      // Both optional — Clerk accepts either omitted or blank.
-      firstName: firstName.trim() || undefined,
-      lastName: lastName.trim() || undefined,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
     });
     if (error) return;
 
@@ -69,6 +72,14 @@ function SignUpForm() {
     // same issue observed directly: "verification_not_sent").
     await signUp.verifications.sendEmailCode();
     setEmailCodeSent(true);
+  };
+
+  const handleGoogleSignUp = async () => {
+    await signUp.sso({
+      strategy: "oauth_google",
+      redirectUrl,
+      redirectCallbackUrl: "/sso-callback",
+    });
   };
 
   const handleVerify = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -134,6 +145,26 @@ function SignUpForm() {
       <h1 className="font-display text-2xl font-bold text-ink">
         Create an account
       </h1>
+      <div className="flex w-full max-w-xs flex-col gap-4">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={handleGoogleSignUp}
+          disabled={fetchStatus === "fetching"}
+          className="w-full gap-2"
+        >
+          <IconGoogle className="h-4 w-4" />
+          Continue with Google
+        </Button>
+
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-line" />
+          <span className="text-xs font-medium uppercase tracking-wide text-ink-dim">
+            or
+          </span>
+          <div className="h-px flex-1 bg-line" />
+        </div>
+      </div>
       <form
         onSubmit={handleSubmit}
         className="flex w-full max-w-xs flex-col gap-4"
@@ -147,6 +178,7 @@ function SignUpForm() {
               id="firstName"
               name="firstName"
               type="text"
+              required
               maxLength={NAME_MAX_LENGTH}
               value={firstName}
               onChange={(event) => setFirstName(event.target.value)}
@@ -167,6 +199,7 @@ function SignUpForm() {
               id="lastName"
               name="lastName"
               type="text"
+              required
               maxLength={NAME_MAX_LENGTH}
               value={lastName}
               onChange={(event) => setLastName(event.target.value)}
@@ -224,6 +257,11 @@ function SignUpForm() {
           Continue
         </Button>
       </form>
+      {errors?.global && errors.global.length > 0 && (
+        <p className="text-sm text-coral">
+          {errors.global[0]?.message ?? "Something went wrong."}
+        </p>
+      )}
       {/* Required for sign-up flows — Clerk's bot sign-up protection is enabled by default */}
       <div id="clerk-captcha" />
     </main>
