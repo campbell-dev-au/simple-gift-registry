@@ -131,7 +131,6 @@ export default async function RegistryPage({
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
       <Breadcrumbs
         items={[
-          { label: "Home", href: "/" },
           { label: "My registries", href: "/registries" },
           { label: registry.title },
         ]}

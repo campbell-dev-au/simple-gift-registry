@@ -8,7 +8,6 @@ import { getClaimSummaries } from "@/lib/registry-claims";
 import { Button, buttonClasses } from "@/components/button";
 import { ClaimProgress } from "@/components/claim-progress";
 import { sectionTitleClass } from "@/components/field";
-import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   acceptInvitation,
   declineInvitation,
@@ -106,16 +105,13 @@ export default async function RegistriesPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-10">
-      <div className="flex flex-col gap-4">
-        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "My registries" }]} />
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="font-display text-2xl font-bold text-ink">
-            My registries
-          </h1>
-          <Link href="/registries/new" className={buttonClasses("primary")}>
-            + Create a gift registry
-          </Link>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="font-display text-2xl font-bold text-ink">
+          My registries
+        </h1>
+        <Link href="/registries/new" className={buttonClasses("primary")}>
+          + Create a gift registry
+        </Link>
       </div>
 
       {pendingInvitations.length > 0 && (

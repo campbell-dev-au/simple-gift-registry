@@ -9,7 +9,6 @@ export default function NewRegistryPage() {
     <main className="mx-auto flex w-full max-w-xs flex-1 flex-col justify-center gap-6 px-6 py-10">
       <Breadcrumbs
         items={[
-          { label: "Home", href: "/" },
           { label: "My registries", href: "/registries" },
           { label: "New registry" },
         ]}

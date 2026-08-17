@@ -11,7 +11,10 @@ export default async function AccountPage() {
   return (
     <main className="mx-auto flex w-full max-w-xs flex-1 flex-col gap-6 px-6 py-10">
       <Breadcrumbs
-        items={[{ label: "Home", href: "/" }, { label: "Account" }]}
+        items={[
+          { label: "My registries", href: "/registries" },
+          { label: "Account" },
+        ]}
       />
 
       <h1 className="font-display text-2xl font-bold text-ink">Account</h1>
