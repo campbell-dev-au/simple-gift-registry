@@ -10,4 +10,4 @@ Feature: Create an account
     And I sign up with a new email address and a valid password
     And I enter the emailed verification code
     Then I am signed in
-    And I see my email address on the homepage
+    And I land on my registries

@@ -3,13 +3,13 @@
 import { useClerk } from "@clerk/nextjs";
 import { buttonClasses } from "@/components/button";
 
-export function SignOutButton() {
+export function SignOutButton({ className }: { className?: string }) {
   const { signOut } = useClerk();
 
   return (
     <button
       onClick={() => signOut({ redirectUrl: "/" })}
-      className={buttonClasses("text")}
+      className={className ?? buttonClasses("text")}
     >
       Sign out
     </button>

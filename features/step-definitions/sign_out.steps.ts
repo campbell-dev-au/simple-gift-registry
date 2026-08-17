@@ -24,6 +24,8 @@ Given("I am already signed in", async ({ page, account }) => {
 });
 
 When("I choose to sign out", async ({ page }) => {
+  // "Sign out" lives inside the header's account menu, closed by default.
+  await page.getByRole("button", { name: "Account menu" }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
 });
 

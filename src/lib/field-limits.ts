@@ -8,6 +8,7 @@ export const GIFT_NAME_MAX_LENGTH = 200;
 export const NOTES_MAX_LENGTH = 1000;
 export const EMAIL_MAX_LENGTH = 254;
 export const QUANTITY_MAX = 999;
+export const NAME_MAX_LENGTH = 100;
 
 export function assertMaxLength(
   value: string,

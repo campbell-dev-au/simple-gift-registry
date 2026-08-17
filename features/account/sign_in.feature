@@ -11,4 +11,4 @@ Feature: Sign in to an existing account
     And I sign in with my email address and password
     And I verify this device with the emailed code
     Then I am signed in
-    And I see my email address on the homepage
+    And I land on my registries

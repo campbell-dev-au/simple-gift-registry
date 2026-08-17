@@ -1,36 +1,13 @@
-import Link from "next/link";
-import { currentUser } from "@clerk/nextjs/server";
-import { buttonClasses } from "@/components/button";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { IconGift } from "@/components/icons";
 
 export default async function Home() {
-  const user = await currentUser();
-
-  if (user) {
-    return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet/10 text-violet">
-          <IconGift className="h-6 w-6" />
-        </span>
-        <div>
-          <h1 className="font-display text-3xl font-bold text-ink">
-            Welcome back
-          </h1>
-          <p className="mt-1.5 text-sm text-ink-dim">
-            Signed in as {user.primaryEmailAddress?.emailAddress}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/registries/new" className={buttonClasses("primary")}>
-            + Create a gift registry
-          </Link>
-          <Link href="/registries" className={buttonClasses("ghost")}>
-            My registries
-          </Link>
-        </div>
-      </main>
-    );
-  }
+  // A signed-in visitor has nothing to do on this welcome page that isn't
+  // already one click away in the header — send them straight to their
+  // registries instead of an extra "Welcome back" stop.
+  const { userId } = await auth();
+  if (userId) redirect("/registries");
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">

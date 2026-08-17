@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useSignUp } from "@clerk/nextjs";
 import { Button } from "@/components/button";
 import { inputClass, labelClass } from "@/components/field";
-import { EMAIL_MAX_LENGTH } from "@/lib/field-limits";
+import { EMAIL_MAX_LENGTH, NAME_MAX_LENGTH } from "@/lib/field-limits";
 
 const PASSWORD_MAX_LENGTH = 128;
 const EMAIL_CODE_MAX_LENGTH = 10;
@@ -30,6 +30,8 @@ function SignUpForm() {
       ? rawRedirect
       : "/";
 
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -54,6 +56,9 @@ function SignUpForm() {
     const { error } = await signUp.password({
       emailAddress: email,
       password,
+      // Both optional — Clerk accepts either omitted or blank.
+      firstName: firstName.trim() || undefined,
+      lastName: lastName.trim() || undefined,
     });
     if (error) return;
 
@@ -133,6 +138,48 @@ function SignUpForm() {
         onSubmit={handleSubmit}
         className="flex w-full max-w-xs flex-col gap-4"
       >
+        <div className="flex gap-3">
+          <div className="flex flex-1 flex-col gap-1.5">
+            <label htmlFor="firstName" className={labelClass}>
+              First name
+            </label>
+            <input
+              id="firstName"
+              name="firstName"
+              type="text"
+              maxLength={NAME_MAX_LENGTH}
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
+              className={inputClass}
+            />
+            {errors?.fields.firstName && (
+              <p className="text-sm text-coral">
+                {errors.fields.firstName.message}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-1 flex-col gap-1.5">
+            <label htmlFor="lastName" className={labelClass}>
+              Last name
+            </label>
+            <input
+              id="lastName"
+              name="lastName"
+              type="text"
+              maxLength={NAME_MAX_LENGTH}
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
+              className={inputClass}
+            />
+            {errors?.fields.lastName && (
+              <p className="text-sm text-coral">
+                {errors.fields.lastName.message}
+              </p>
+            )}
+          </div>
+        </div>
+
         <div className="flex flex-col gap-1.5">
           <label htmlFor="email" className={labelClass}>
             Email address

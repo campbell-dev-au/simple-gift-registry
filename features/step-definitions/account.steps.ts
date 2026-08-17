@@ -42,10 +42,14 @@ When("I enter the emailed verification code", async ({ page }) => {
 });
 
 Then("I am signed in", async ({ page }) => {
-  await expect(page).toHaveURL("/");
-  await expect(page.getByText("Signed in as")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible();
 });
 
-Then("I see my email address on the homepage", async ({ page, account }) => {
-  await expect(page.getByText(account.email)).toBeVisible();
+Then("I land on my registries", async ({ page }) => {
+  // Signed-in visitors are redirected straight from "/" to "/registries" —
+  // see src/app/page.tsx.
+  await expect(page).toHaveURL("/registries");
+  await expect(
+    page.getByRole("heading", { name: "My registries" }),
+  ).toBeVisible();
 });
