@@ -23,7 +23,7 @@ export async function SiteHeader() {
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet/10 text-violet">
             <IconGift className="h-4 w-4" />
           </span>
-          Gift Registry
+          Simple Gift Registry
         </Link>
 
         {userId ? (

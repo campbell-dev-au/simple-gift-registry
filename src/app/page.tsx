@@ -18,7 +18,7 @@ export default async function Home() {
       </span>
       <div>
         <h1 className="font-display text-4xl font-bold text-ink">
-          Gift Registry
+          Simple Gift Registry
         </h1>
         <p className="mt-2 max-w-sm text-sm text-ink-dim">
           Build a registry, share one link, and let guests claim gifts

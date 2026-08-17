@@ -21,7 +21,7 @@ const schibstedGrotesk = Schibsted_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Gift Registry",
+  title: "Simple Gift Registry",
   description: "A simple gift registry web application.",
 };
 
