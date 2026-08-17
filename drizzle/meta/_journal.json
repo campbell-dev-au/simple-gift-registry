@@ -36,6 +36,20 @@
       "when": 1786924210888,
       "tag": "0004_big_zarda",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786929708544,
+      "tag": "0005_plain_payback",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786929722831,
+      "tag": "0006_old_newton_destine",
+      "breakpoints": true
     }
   ]
 }

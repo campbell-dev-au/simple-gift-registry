@@ -1,13 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useSignIn } from "@clerk/nextjs";
 
 export default function SignInPage() {
+  return (
+    <Suspense>
+      <SignInForm />
+    </Suspense>
+  );
+}
+
+function SignInForm() {
   const { signIn, errors, fetchStatus } = useSignIn();
   const { isSignedIn } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Only allow same-origin relative paths — a bare redirect_url query param
+  // is attacker-controlled, and "//evil.com" is browser-parsed as an
+  // external absolute URL despite not starting with "http".
+  const rawRedirect = searchParams.get("redirect_url");
+  const redirectUrl =
+    rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+      ? rawRedirect
+      : "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,7 +59,7 @@ export default function SignInPage() {
       finalizedRef.current = true;
       signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
-          const url = decorateUrl(session?.currentTask ? "/sign-in" : "/");
+          const url = decorateUrl(session?.currentTask ? "/sign-in" : redirectUrl);
           if (url.startsWith("http")) {
             window.location.href = url;
           } else {
@@ -51,7 +68,7 @@ export default function SignInPage() {
         },
       });
     }
-  }, [signIn, signIn.status, router]);
+  }, [signIn, signIn.status, router, redirectUrl]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

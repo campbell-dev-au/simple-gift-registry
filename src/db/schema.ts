@@ -30,10 +30,10 @@ export const gifts = pgTable("gifts", {
   name: text("name").notNull(),
   notes: text("notes"),
   quantity: integer("quantity").notNull().default(1),
-  // Anonymous, trust-based claiming — no guest account required. Whoever
-  // has the share link can claim or unclaim; claimedByName is just a name
-  // they type in, not a verified identity.
-  claimedByName: text("claimed_by_name"),
+  // Claiming requires a Clerk account (claimedByUserId is a real, verified
+  // identity) so only the claimant can unclaim, and so other guests can be
+  // shown "Claimed" without being told by whom.
+  claimedByUserId: text("claimed_by_user_id"),
   claimedAt: timestamp("claimed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

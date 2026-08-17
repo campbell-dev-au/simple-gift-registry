@@ -1,0 +1,1 @@
+ALTER TABLE "gifts" ADD COLUMN "claimed_by_user_id" text;

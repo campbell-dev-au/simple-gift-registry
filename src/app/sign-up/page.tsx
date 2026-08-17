@@ -1,13 +1,28 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useSignUp } from "@clerk/nextjs";
 
 export default function SignUpPage() {
+  return (
+    <Suspense>
+      <SignUpForm />
+    </Suspense>
+  );
+}
+
+function SignUpForm() {
   const { signUp, errors, fetchStatus } = useSignUp();
   const { isSignedIn } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Only allow same-origin relative paths — see the sign-in page for why.
+  const rawRedirect = searchParams.get("redirect_url");
+  const redirectUrl =
+    rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+      ? rawRedirect
+      : "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,7 +32,7 @@ export default function SignUpPage() {
   const finalize = async () => {
     await signUp.finalize({
       navigate: ({ session, decorateUrl }) => {
-        const url = decorateUrl(session?.currentTask ? "/sign-up" : "/");
+        const url = decorateUrl(session?.currentTask ? "/sign-up" : redirectUrl);
         if (url.startsWith("http")) {
           window.location.href = url;
         } else {

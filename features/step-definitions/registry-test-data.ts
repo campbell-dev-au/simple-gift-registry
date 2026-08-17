@@ -37,10 +37,10 @@ export async function archiveTestRegistry(id: string) {
 export async function claimTestGift(
   registryId: string,
   giftName: string,
-  claimantName: string,
+  claimantUserId: string,
 ) {
   await db
     .update(gifts)
-    .set({ claimedByName: claimantName, claimedAt: new Date() })
+    .set({ claimedByUserId: claimantUserId, claimedAt: new Date() })
     .where(and(eq(gifts.registryId, registryId), eq(gifts.name, giftName)));
 }
