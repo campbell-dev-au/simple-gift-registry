@@ -136,8 +136,13 @@ Then(
 When("I unarchive the registry", async ({ page, registry }) => {
   await page.goto(`/registries/${registry.id}`);
   await page.getByRole("button", { name: "Unarchive registry" }).click();
-  // See the matching wait in "I archive the registry" above.
-  await page.getByRole("button", { name: "Archive registry" }).waitFor();
+  // See the matching wait in "I archive the registry" above. exact is load-
+  // bearing here: getByRole matches accessible names by substring, so a
+  // non-exact "Archive registry" also matches the still-present "Unarchive
+  // registry" button and the wait resolves before the action has run.
+  await page
+    .getByRole("button", { name: "Archive registry", exact: true })
+    .waitFor();
 });
 
 Then(
