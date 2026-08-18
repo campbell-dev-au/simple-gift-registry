@@ -92,6 +92,15 @@ function SignUpForm() {
     }
   };
 
+  const handleStartOver = async () => {
+    // signUp persists across visits (Clerk client cookie), so without this
+    // a stale in-progress attempt keeps reopening the verify screen for the
+    // original email with no way back to a blank "Create an account" form.
+    await signUp.reset();
+    setCode("");
+    setEmailCodeSent(false);
+  };
+
   if (signUp.status === "complete" || isSignedIn) {
     return null;
   }
@@ -135,6 +144,13 @@ function SignUpForm() {
           >
             Verify
           </Button>
+          <button
+            type="button"
+            onClick={handleStartOver}
+            className="text-sm text-ink-dim underline underline-offset-2 hover:text-ink"
+          >
+            Use a different email
+          </button>
         </form>
       </main>
     );
