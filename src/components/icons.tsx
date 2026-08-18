@@ -71,13 +71,3 @@ export function IconGoogle({ className }: IconProps) {
     </svg>
   );
 }
-
-export function IconArchive({ className }: IconProps) {
-  return (
-    <svg {...shared} className={className} aria-hidden="true">
-      <rect x="3" y="4" width="18" height="5" rx="1.2" />
-      <path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9" />
-      <path d="M10 13h4" />
-    </svg>
-  );
-}

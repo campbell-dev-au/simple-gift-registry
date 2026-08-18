@@ -1,4 +1,4 @@
-export function initialsFromEmail(email: string) {
+function initialsFromEmail(email: string) {
   const local = email.split("@")[0] ?? email;
   const parts = local.split(/[._-]+/).filter(Boolean);
   const letters =
