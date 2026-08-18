@@ -66,7 +66,12 @@ Then("I see the gift marked as claimed by me", async ({ page }) => {
 });
 
 Then("I see the gift is claimed", async ({ page }) => {
-  await expect(page.getByText("Claimed", { exact: true })).toBeVisible();
+  // Scoped to a listitem: the page also has a "Claimed" section heading once
+  // any gift is fully claimed, which collides with the exact-text match on
+  // the gift's own status pill.
+  await expect(
+    page.getByRole("listitem").getByText("Claimed", { exact: true }),
+  ).toBeVisible();
 });
 
 Then("I do not see who claimed it", async ({ page }) => {
