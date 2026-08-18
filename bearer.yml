@@ -1,0 +1,6 @@
+scan:
+    scanner:
+        - sast
+    # Claude Code skill assets, not part of the shipped application.
+    skip-path:
+        - .agents/**

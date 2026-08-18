@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "knip": "knip",
     "test:bdd": "bddgen && playwright test",
     "test:bdd:app": "bddgen && playwright test .features-gen/features/homepage .features-gen/features/registry",
