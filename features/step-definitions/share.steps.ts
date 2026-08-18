@@ -66,7 +66,12 @@ Then("I see the gift marked as claimed by me", async ({ page }) => {
 });
 
 Then("I see the gift is claimed", async ({ page }) => {
-  await expect(page.getByText("Claimed", { exact: true })).toBeVisible();
+  // Scoped to a listitem: the page also has a "Claimed" section heading once
+  // any gift is fully claimed, which collides with the exact-text match on
+  // the gift's own status pill.
+  await expect(
+    page.getByRole("listitem").getByText("Claimed", { exact: true }),
+  ).toBeVisible();
 });
 
 Then("I do not see who claimed it", async ({ page }) => {
@@ -86,8 +91,11 @@ When("I unclaim the gift", async ({ page }) => {
 });
 
 Then("I see the gift is available to claim again", async ({ page }) => {
+  // exact is load-bearing: getByRole matches accessible names by substring,
+  // so a non-exact "Claim Kettle" also matches the "Unclaim Kettle" button
+  // and this would pass even if the unclaim never took effect.
   await expect(
-    page.getByRole("button", { name: `Claim ${GUEST_GIFT_NAME}` }),
+    page.getByRole("button", { name: `Claim ${GUEST_GIFT_NAME}`, exact: true }),
   ).toBeVisible();
 });
 

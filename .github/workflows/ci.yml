@@ -20,7 +20,16 @@ jobs:
       - run: npm run typecheck
       - run: npm run knip
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        timeout-minutes: 5
+        env:
+          # apt-get has been observed hanging indefinitely on this step
+          # (twice, 18-20min, same point both times) rather than failing —
+          # this makes it fail fast with a debug trace instead, so a hang
+          # produces an actionable log rather than burning the timeout.
+          DEBIAN_FRONTEND: noninteractive
+          DEBUG: pw:install
       # Homepage + registry scenarios only. features/account/ drives Clerk's
       # real dev-instance sign-up/sign-in/sign-out UI (rate-limited, capped
       # at 100 users) — run test:bdd:account manually when working on auth,

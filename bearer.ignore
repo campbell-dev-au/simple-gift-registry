@@ -1,0 +1,20 @@
+{
+  "21e41dc72d566c011ee256dffe71204c_0": {
+    "author": "campbell.davis90@gmail.com",
+    "comment": "Not a real credential: a fixed password for ephemeral Clerk test accounts (+clerk_test address, deleted after each test run) on the dev instance. See features/step-definitions/clerk-test-account.ts.",
+    "false_positive": true,
+    "ignored_at": "2026-08-18T02:07:53Z"
+  },
+  "8ac5a494f6ab61d7961d983678e31e29_0": {
+    "author": "campbell.davis90@gmail.com",
+    "comment": "False positive: passwordStatus is a local UI state enum (idle/saving/saved), not a secret comparison. No password value is compared here.",
+    "false_positive": true,
+    "ignored_at": "2026-08-18T02:07:55Z"
+  },
+  "8ac5a494f6ab61d7961d983678e31e29_1": {
+    "author": "campbell.davis90@gmail.com",
+    "comment": "False positive: passwordStatus is a local UI state enum (idle/saving/saved), not a secret comparison. No password value is compared here.",
+    "false_positive": true,
+    "ignored_at": "2026-08-18T02:07:57Z"
+  }
+}

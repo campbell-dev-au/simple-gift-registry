@@ -14,6 +14,10 @@ Given("I have saved the registry", async ({ account, registry }) => {
 
 When("I save the registry", async ({ page }) => {
   await page.getByRole("button", { name: "Save to my registries" }).click();
+  // The click resolves once the request is sent, not once the server action
+  // + revalidation have finished — wait for the button label to flip before
+  // a subsequent navigation can race the write (mirrors registry.steps.ts).
+  await page.getByRole("button", { name: "Remove from my registries" }).waitFor();
 });
 
 Then("I see the registry marked as saved", async ({ page }) => {
@@ -28,15 +32,19 @@ When(
     await page
       .getByRole("button", { name: "Remove from my registries" })
       .click();
+    // See the matching wait in "I save the registry" above.
+    await page.getByRole("button", { name: "Save to my registries" }).waitFor();
   },
 );
 
 When("I remove the saved registry", async ({ page }) => {
-  await page
-    .getByRole("button", {
-      name: `Remove ${SAVED_REGISTRY_TITLE} from my registries`,
-    })
-    .click();
+  const removeButton = page.getByRole("button", {
+    name: `Remove ${SAVED_REGISTRY_TITLE} from my registries`,
+  });
+  await removeButton.click();
+  // Removing re-renders the list without the saved registry — wait for the
+  // button to disappear so a subsequent navigation can't race the write.
+  await removeButton.waitFor({ state: "detached" });
 });
 
 Then(
