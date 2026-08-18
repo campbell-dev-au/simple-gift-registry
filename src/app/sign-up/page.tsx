@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useSignUp } from "@clerk/nextjs";
 import { Button } from "@/components/button";
@@ -13,6 +13,7 @@ import {
 } from "@/lib/field-limits";
 
 const EMAIL_CODE_MAX_LENGTH = 10;
+const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function SignUpPage() {
   return (
@@ -40,6 +41,13 @@ function SignUpForm() {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [emailCodeSent, setEmailCodeSent] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timeout = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(timeout);
+  }, [resendCooldown]);
 
   const finalize = async () => {
     await signUp.finalize({
@@ -72,6 +80,16 @@ function SignUpForm() {
     // same issue observed directly: "verification_not_sent").
     await signUp.verifications.sendEmailCode();
     setEmailCodeSent(true);
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+  };
+
+  const handleResend = async () => {
+    const { error } = await signUp.verifications.sendEmailCode();
+    if (error) return;
+    // Also covers a stale in-progress attempt restored from the Clerk client
+    // cookie, where no code was sent this visit and Verify is still gated.
+    setEmailCodeSent(true);
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
   };
 
   const handleGoogleSignUp = async () => {
@@ -99,6 +117,7 @@ function SignUpForm() {
     await signUp.reset();
     setCode("");
     setEmailCodeSent(false);
+    setResendCooldown(0);
   };
 
   if (signUp.status === "complete" || isSignedIn) {
@@ -144,6 +163,16 @@ function SignUpForm() {
           >
             Verify
           </Button>
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={fetchStatus === "fetching" || resendCooldown > 0}
+            className="text-sm text-ink-dim underline underline-offset-2 hover:text-ink disabled:no-underline disabled:opacity-60 disabled:hover:text-ink-dim"
+          >
+            {resendCooldown > 0
+              ? `Resend code in ${resendCooldown}s`
+              : "Resend code"}
+          </button>
           <button
             type="button"
             onClick={handleStartOver}
