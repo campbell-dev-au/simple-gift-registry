@@ -6,7 +6,7 @@ export function SiteFooter() {
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-4 text-xs text-ink-dim">
         <span>Simple Gift Registry</span>
         <span>
-          Having trouble, or got feedback? Email{" "}
+          Having trouble, or have feedback? Email{" "}
           <a
             href="mailto:support@simplegiftregistry.com.au"
             className="text-violet hover:underline"
