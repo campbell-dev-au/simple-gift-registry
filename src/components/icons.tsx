@@ -31,6 +31,15 @@ export function IconUsers({ className }: IconProps) {
   );
 }
 
+export function IconX({ className }: IconProps) {
+  return (
+    <svg {...shared} className={className} aria-hidden="true">
+      <path d="M6 6l12 12" />
+      <path d="M18 6L6 18" />
+    </svg>
+  );
+}
+
 export function IconGift({ className }: IconProps) {
   return (
     <svg {...shared} className={className} aria-hidden="true">

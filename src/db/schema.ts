@@ -14,6 +14,10 @@ export const registries = pgTable("registries", {
   ownerId: text("owner_id").notNull(),
   title: text("title").notNull(),
   eventDate: date("event_date"),
+  // Free-form notes from the owner — shipping address, sizing, "no
+  // gift-wrap please", etc. Shown to anyone with the share link, not just
+  // the owner/co-owners.
+  notes: text("notes"),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   // The public, unguessable identifier for /share/[shareToken] — separate
   // from `id` so a leaked link can be invalidated (regenerate) without

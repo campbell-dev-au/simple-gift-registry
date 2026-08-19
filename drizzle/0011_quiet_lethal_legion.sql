@@ -1,0 +1,1 @@
+ALTER TABLE "registries" ADD COLUMN "notes" text;

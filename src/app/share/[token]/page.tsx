@@ -31,6 +31,22 @@ export default async function SharePage({
 
   const isOwner = userId === registry.ownerId;
 
+  if (registry.archivedAt) {
+    return (
+      <main className="flex flex-1 flex-col items-center gap-8 p-8">
+        <div className="w-full max-w-md text-center">
+          <h1 className="font-display text-[26px] font-bold text-ink">
+            {registry.title}
+          </h1>
+          <p className="mt-4 text-sm text-ink-dim">
+            This registry has been archived and is no longer accepting
+            claims.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   // One parallel wave: claims don't need the gift list first — a subquery
   // scopes them to this registry's gifts in the same round trip.
   const [registryGifts, claims, saves] = await Promise.all([
@@ -100,6 +116,11 @@ export default async function SharePage({
             {registry.eventDate && (
               <p className="mt-1.5 text-sm text-ink-dim">
                 {formatEventDate(registry.eventDate)}
+              </p>
+            )}
+            {registry.notes && (
+              <p className="mt-1.5 whitespace-pre-wrap break-words text-sm text-ink-dim">
+                {registry.notes}
               </p>
             )}
           </>

@@ -13,8 +13,10 @@ import {
   TITLE_MAX_LENGTH,
   GIFT_NAME_MAX_LENGTH,
   NOTES_MAX_LENGTH,
+  REGISTRY_NOTES_MAX_LENGTH,
   EMAIL_MAX_LENGTH,
   QUANTITY_MAX,
+  GIFT_COUNT_MAX,
 } from "@/lib/field-limits";
 
 type Db = ReturnType<typeof getDb>;
@@ -63,6 +65,16 @@ export async function addGift(registryId: string, formData: FormData) {
   assertMaxLength(name, GIFT_NAME_MAX_LENGTH, "Gift name");
   assertMaxLength(notes ?? "", NOTES_MAX_LENGTH, "Notes");
 
+  const existingGifts = await db
+    .select({ id: gifts.id })
+    .from(gifts)
+    .where(eq(gifts.registryId, registryId));
+  if (existingGifts.length >= GIFT_COUNT_MAX) {
+    throw new Error(
+      `This registry already has the maximum of ${GIFT_COUNT_MAX} gifts.`,
+    );
+  }
+
   await db.insert(gifts).values({
     registryId,
     name,
@@ -85,11 +97,13 @@ export async function updateRegistry(registryId: string, formData: FormData) {
 
   const title = formData.get("title") as string;
   const eventDate = formData.get("eventDate") as string;
+  const notes = formData.get("notes") as string;
   assertMaxLength(title, TITLE_MAX_LENGTH, "Registry title");
+  assertMaxLength(notes ?? "", REGISTRY_NOTES_MAX_LENGTH, "Notes");
 
   await db
     .update(registries)
-    .set({ title, eventDate: eventDate || null })
+    .set({ title, eventDate: eventDate || null, notes: notes || null })
     .where(eq(registries.id, registryId));
 
   revalidatePath(`/registries/${registryId}`);
