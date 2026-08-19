@@ -125,6 +125,9 @@ Then("I can edit the registry", async ({ page }) => {
 });
 
 When("I remove that co-owner", async ({ page }) => {
+  // Removing a co-owner asks for confirmation (window.confirm); Playwright
+  // dismisses dialogs by default, which would cancel the removal.
+  page.once("dialog", (dialog) => dialog.accept());
   await page
     .getByRole("button", {
       name: `Remove co-owner ${REMOVABLE_CO_OWNER_EMAIL}`,

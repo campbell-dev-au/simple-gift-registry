@@ -24,11 +24,17 @@ async function requireRegistryByShareToken(
   return registry;
 }
 
+export type ClaimResult = { error: string } | null;
+
+// Signature shaped for useActionState (prevState before formData) so the
+// share page can show the outcome inline — most importantly when a claim
+// loses a race and would otherwise vanish without a trace.
 export async function claimGift(
   token: string,
   giftId: string,
+  _prevState: ClaimResult,
   formData: FormData,
-) {
+): Promise<ClaimResult> {
   const { userId } = await auth();
   if (!userId) redirect(`/sign-in?redirect_url=/share/${token}`);
 
@@ -41,7 +47,7 @@ export async function claimGift(
     requestedQuantity < 1 ||
     requestedQuantity > QUANTITY_MAX
   ) {
-    throw new Error("Invalid quantity.");
+    return { error: "Enter a valid quantity to claim." };
   }
 
   const db = getDb();
@@ -50,8 +56,9 @@ export async function claimGift(
   // The FOR UPDATE lock on the gift row serializes concurrent claimants of
   // the same gift, so the "already claimed" sum read below can't be stale
   // by the time we decide whether this claim still fits — the loser of a
-  // race just sees a remaining count too small for their request and their
-  // claim is silently skipped, instead of overselling the gift.
+  // race sees a remaining count too small for their request and gets told
+  // so, instead of overselling the gift.
+  let result: ClaimResult = null;
   await db.transaction(async (tx) => {
     const [gift] = await tx
       .select({ quantity: gifts.quantity })
@@ -59,7 +66,10 @@ export async function claimGift(
       .where(and(eq(gifts.id, giftId), eq(gifts.registryId, registry.id)))
       .for("update");
 
-    if (!gift) return;
+    if (!gift) {
+      result = { error: "This gift is no longer on the registry." };
+      return;
+    }
 
     const [{ claimed }] = await tx
       .select({
@@ -69,7 +79,15 @@ export async function claimGift(
       .where(eq(giftClaims.giftId, giftId));
 
     const remaining = gift.quantity - Number(claimed);
-    if (requestedQuantity > remaining) return;
+    if (requestedQuantity > remaining) {
+      result = {
+        error:
+          remaining <= 0
+            ? "Someone else just claimed the last one."
+            : `Someone else just claimed some — only ${remaining} left.`,
+      };
+      return;
+    }
 
     await tx.insert(giftClaims).values({
       giftId,
@@ -79,6 +97,7 @@ export async function claimGift(
   });
 
   revalidatePath(`/share/${token}`);
+  return result;
 }
 
 // Bookmarking your own registry via its share link is a no-op, not an

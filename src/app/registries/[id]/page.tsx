@@ -5,23 +5,22 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { registries, gifts, giftClaims, registryInvitations } from "@/db/schema";
 import { canManageRegistry } from "@/lib/registry-access";
-import { Button, buttonClasses } from "@/components/button";
+import { SubmitButton } from "@/components/submit-button";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { Pill } from "@/components/pill";
 import { ClaimProgress } from "@/components/claim-progress";
 import { Avatar } from "@/components/avatar";
-import { IconLink, IconUsers, IconGift } from "@/components/icons";
-import { inputClass, labelClass, sectionTitleClass } from "@/components/field";
+import { IconLink, IconUsers } from "@/components/icons";
+import { sectionTitleClass } from "@/components/field";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { EMAIL_MAX_LENGTH } from "@/lib/field-limits";
 import { RegistryTitleEditor } from "@/components/registry-title-editor";
-import { AddGiftForm } from "@/components/add-gift-form";
-import { GiftCard } from "@/components/gift-card";
+import { GiftList } from "@/components/gift-list";
+import { ShareLink } from "@/components/share-link";
+import { InviteCoOwnerForm } from "@/components/invite-co-owner-form";
 import {
   archiveRegistry,
   unarchiveRegistry,
   regenerateShareLink,
-  inviteCoOwner,
   cancelInvitation,
   removeCoOwner,
   setClaimVisibility,
@@ -47,24 +46,35 @@ export default async function RegistryPage({
 
   if (!registry) notFound();
 
-  const registryGifts = await db
-    .select()
-    .from(gifts)
-    .where(eq(gifts.registryId, id));
+  // Everything below the registry row itself only depends on it, so fetch
+  // in two parallel waves instead of one query at a time — each of these
+  // is a round trip to a remote database (or Clerk's API).
+  const [registryGifts, canManage] = await Promise.all([
+    db.select().from(gifts).where(eq(gifts.registryId, id)),
+    canManageRegistry(db, registry.ownerId, registry.id, userId ?? null),
+  ]);
 
-  const canManage = await canManageRegistry(db, registry.ownerId, registry.id, userId ?? null);
   // Hidden by default even from the owner/co-owners — see reveal_claims in
   // src/db/schema.ts. Guests always see remaining counts on the share page;
   // this only gates what the registry's manager sees.
   const showClaims = canManage && registry.revealClaims;
 
+  // Removing a co-owner is reserved for whoever created the registry — see
+  // requirePrimaryOwner in ./actions.ts.
+  const isPrimaryOwner = userId === registry.ownerId;
+
   // Aggregate claimed quantity per gift, never the claimer's identity — even
   // once revealed, the owner gets to see progress, not who claimed what (see
   // gift_claims in src/db/schema.ts for why that boundary exists).
-  const claims =
+  //
+  // The primary owner's email is fetched from Clerk since we only ever
+  // store an email for invitation-based co-owners, not the creator; it's
+  // shown to accepted co-owners so the "Co-owners" list never lists the
+  // viewer themselves.
+  const [claims, invitations, primaryOwnerEmail] = await Promise.all([
     !showClaims || registryGifts.length === 0
       ? []
-      : await db
+      : db
           .select()
           .from(giftClaims)
           .where(
@@ -72,7 +82,30 @@ export default async function RegistryPage({
               giftClaims.giftId,
               registryGifts.map((gift) => gift.id),
             ),
-          );
+          ),
+    canManage
+      ? db
+          .select()
+          .from(registryInvitations)
+          .where(eq(registryInvitations.registryId, id))
+      : [],
+    canManage && !isPrimaryOwner
+      ? (async () => {
+          try {
+            const client = await clerkClient();
+            const owner = await client.users.getUser(registry.ownerId);
+            return (
+              owner.primaryEmailAddress?.emailAddress ??
+              owner.emailAddresses[0]?.emailAddress ??
+              null
+            );
+          } catch {
+            return null;
+          }
+        })()
+      : null,
+  ]);
+
   const claimedByGift = new Map<string, number>();
   for (const claim of claims) {
     claimedByGift.set(
@@ -87,38 +120,10 @@ export default async function RegistryPage({
     0,
   );
 
-  // Removing a co-owner is reserved for whoever created the registry — see
-  // requirePrimaryOwner in ./actions.ts.
-  const isPrimaryOwner = userId === registry.ownerId;
-
-  const invitations = canManage
-    ? await db
-        .select()
-        .from(registryInvitations)
-        .where(eq(registryInvitations.registryId, id))
-    : [];
-  // Never list the viewer themselves as a "co-owner" of their own registry —
-  // for an accepted co-owner viewing the page, that means showing the
-  // *primary* owner here instead (fetched from Clerk since we only ever
-  // store an email for invitation-based co-owners, not the creator).
   const otherAcceptedCoOwners = invitations.filter(
     (i) => i.status === "accepted" && i.acceptedByUserId !== userId,
   );
   const pendingInvitations = invitations.filter((i) => i.status === "pending");
-
-  let primaryOwnerEmail: string | null = null;
-  if (canManage && !isPrimaryOwner) {
-    try {
-      const client = await clerkClient();
-      const owner = await client.users.getUser(registry.ownerId);
-      primaryOwnerEmail =
-        owner.primaryEmailAddress?.emailAddress ??
-        owner.emailAddresses[0]?.emailAddress ??
-        null;
-    } catch {
-      primaryOwnerEmail = null;
-    }
-  }
 
   const headersList = await headers();
   const host = headersList.get("host");
@@ -153,9 +158,9 @@ export default async function RegistryPage({
                   : archiveRegistry.bind(null, registry.id)
               }
             >
-              <button type="submit" className={buttonClasses("text")}>
+              <SubmitButton variant="text">
                 {registry.archivedAt ? "Unarchive registry" : "Archive registry"}
-              </button>
+              </SubmitButton>
             </form>
           )}
         </div>
@@ -166,35 +171,18 @@ export default async function RegistryPage({
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="flex flex-col gap-4">
-          {canManage && <AddGiftForm registryId={registry.id} />}
-
-          <section className="flex flex-col gap-3">
-            <h2 className={`${sectionTitleClass} flex items-center gap-2`}>
-              <IconGift className="text-violet" />
-              Gifts
-            </h2>
-            {registryGifts.length === 0 ? (
-              <p className="text-sm text-ink-dim">No gifts yet.</p>
-            ) : (
-              <ul className="flex flex-col gap-2.5">
-                {registryGifts.map((gift) => (
-                  <GiftCard
-                    key={gift.id}
-                    gift={gift}
-                    registryId={registry.id}
-                    canManage={canManage}
-                    showClaims={showClaims}
-                    claimed={Math.min(
-                      claimedByGift.get(gift.id) ?? 0,
-                      gift.quantity,
-                    )}
-                  />
-                ))}
-              </ul>
-            )}
-          </section>
-        </div>
+        <GiftList
+          registryId={registry.id}
+          canManage={canManage}
+          showClaims={showClaims}
+          gifts={registryGifts.map((gift) => ({
+            id: gift.id,
+            name: gift.name,
+            notes: gift.notes,
+            quantity: gift.quantity,
+            claimed: Math.min(claimedByGift.get(gift.id) ?? 0, gift.quantity),
+          }))}
+        />
 
         {canManage && (
           <div className="flex flex-col gap-6">
@@ -207,9 +195,9 @@ export default async function RegistryPage({
                     left.
                   </p>
                   <form action={setClaimVisibility.bind(null, registry.id, false)}>
-                    <Button type="submit" variant="ghost" size="sm">
+                    <SubmitButton variant="ghost" size="sm">
                       Hide claim status
-                    </Button>
+                    </SubmitButton>
                   </form>
                 </>
               ) : (
@@ -237,19 +225,15 @@ export default async function RegistryPage({
                 <IconLink className="text-violet" />
                 Share this registry
               </h2>
-              <label htmlFor="share-link" className="sr-only">
-                Share link
-              </label>
-              <input
-                id="share-link"
-                readOnly
-                value={shareUrl}
-                className={`${inputClass} font-mono text-xs`}
-              />
+              <ShareLink url={shareUrl} />
               <form action={regenerateShareLink.bind(null, registry.id)}>
-                <Button type="submit" variant="ghost" size="sm">
+                <ConfirmSubmitButton
+                  confirmMessage="Get a new share link? The current link stops working immediately — anyone you've already sent it to will need the new one."
+                  variant="ghost"
+                  size="sm"
+                >
                   Get a new share link
-                </Button>
+                </ConfirmSubmitButton>
               </form>
             </section>
 
@@ -267,9 +251,11 @@ export default async function RegistryPage({
                 <ul className="flex flex-col gap-2">
                   {primaryOwnerEmail && (
                     <li className="flex items-center justify-between gap-3 rounded-xl border border-line bg-canvas p-2.5">
-                      <span className="flex items-center gap-2.5 text-sm text-ink">
+                      <span className="flex min-w-0 items-center gap-2.5 text-sm text-ink">
                         <Avatar email={primaryOwnerEmail} />
-                        {primaryOwnerEmail} · Owner
+                        <span className="break-all">
+                          {primaryOwnerEmail} · Owner
+                        </span>
                       </span>
                     </li>
                   )}
@@ -278,9 +264,9 @@ export default async function RegistryPage({
                       key={invitation.id}
                       className="flex items-center justify-between gap-3 rounded-xl border border-line bg-canvas p-2.5"
                     >
-                      <span className="flex items-center gap-2.5 text-sm text-ink">
+                      <span className="flex min-w-0 items-center gap-2.5 text-sm text-ink">
                         <Avatar email={invitation.email} />
-                        {invitation.email}
+                        <span className="break-all">{invitation.email}</span>
                       </span>
                       {isPrimaryOwner && (
                         <form
@@ -290,13 +276,14 @@ export default async function RegistryPage({
                             invitation.id,
                           )}
                         >
-                          <button
-                            type="submit"
+                          <ConfirmSubmitButton
+                            confirmMessage={`Remove ${invitation.email} as a co-owner? They'll lose access to managing this registry.`}
+                            variant="text"
+                            size="sm"
                             aria-label={`Remove co-owner ${invitation.email}`}
-                            className={buttonClasses("text", "sm")}
                           >
                             Remove
-                          </button>
+                          </ConfirmSubmitButton>
                         </form>
                       )}
                     </li>
@@ -315,7 +302,7 @@ export default async function RegistryPage({
                         key={invitation.id}
                         className="flex items-center justify-between gap-3 rounded-xl border border-line bg-canvas p-2.5"
                       >
-                        <span className="text-sm text-ink-dim">
+                        <span className="min-w-0 break-all text-sm text-ink-dim">
                           {invitation.email}
                         </span>
                         <form
@@ -325,13 +312,13 @@ export default async function RegistryPage({
                             invitation.id,
                           )}
                         >
-                          <button
-                            type="submit"
+                          <SubmitButton
+                            variant="text"
+                            size="sm"
                             aria-label={`Cancel invitation to ${invitation.email}`}
-                            className={buttonClasses("text", "sm")}
                           >
                             Cancel
-                          </button>
+                          </SubmitButton>
                         </form>
                       </li>
                     ))}
@@ -339,27 +326,7 @@ export default async function RegistryPage({
                 </>
               )}
 
-              <form
-                action={inviteCoOwner.bind(null, registry.id)}
-                className="flex flex-col gap-2"
-              >
-                <label htmlFor="co-owner-email" className={labelClass}>
-                  Invite a co-owner
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    id="co-owner-email"
-                    name="email"
-                    type="email"
-                    required
-                    maxLength={EMAIL_MAX_LENGTH}
-                    className={inputClass}
-                  />
-                  <Button type="submit" size="sm">
-                    Invite
-                  </Button>
-                </div>
-              </form>
+              <InviteCoOwnerForm registryId={registry.id} />
             </section>
           </div>
         )}

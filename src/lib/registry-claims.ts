@@ -1,4 +1,4 @@
-import { inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { gifts, giftClaims } from "@/db/schema";
 
@@ -10,6 +10,10 @@ export type ClaimSummary = { total: number; claimed: number };
 // who claimed what — used for the owner-facing progress indicator, which
 // must stay claimer-anonymous the same way the guest-facing remaining
 // count already is (see gift_claims in src/db/schema.ts).
+//
+// One round trip: claims are summed per gift in a subquery, capped at each
+// gift's quantity (over-claims can't inflate the bar past 100%), then
+// rolled up per registry.
 export async function getClaimSummaries(
   db: Db,
   registryIds: string[],
@@ -17,46 +21,31 @@ export async function getClaimSummaries(
   const summaries = new Map<string, ClaimSummary>();
   if (registryIds.length === 0) return summaries;
 
-  const allGifts = await db
+  const claimTotals = db
     .select({
-      id: gifts.id,
+      giftId: giftClaims.giftId,
+      claimed: sql<number>`sum(${giftClaims.quantity})`.as("claimed"),
+    })
+    .from(giftClaims)
+    .groupBy(giftClaims.giftId)
+    .as("claim_totals");
+
+  const rows = await db
+    .select({
       registryId: gifts.registryId,
-      quantity: gifts.quantity,
+      total: sql<number>`sum(${gifts.quantity})::int`,
+      claimed: sql<number>`sum(least(coalesce(${claimTotals.claimed}, 0), ${gifts.quantity}))::int`,
     })
     .from(gifts)
-    .where(inArray(gifts.registryId, registryIds));
+    .leftJoin(claimTotals, eq(claimTotals.giftId, gifts.id))
+    .where(inArray(gifts.registryId, registryIds))
+    .groupBy(gifts.registryId);
 
-  const giftIds = allGifts.map((g) => g.id);
-  const claims =
-    giftIds.length === 0
-      ? []
-      : await db
-          .select({
-            giftId: giftClaims.giftId,
-            quantity: giftClaims.quantity,
-          })
-          .from(giftClaims)
-          .where(inArray(giftClaims.giftId, giftIds));
-
-  const claimedByGift = new Map<string, number>();
-  for (const claim of claims) {
-    claimedByGift.set(
-      claim.giftId,
-      (claimedByGift.get(claim.giftId) ?? 0) + claim.quantity,
-    );
-  }
-
-  for (const gift of allGifts) {
-    const summary = summaries.get(gift.registryId) ?? {
-      total: 0,
-      claimed: 0,
-    };
-    summary.total += gift.quantity;
-    summary.claimed += Math.min(
-      claimedByGift.get(gift.id) ?? 0,
-      gift.quantity,
-    );
-    summaries.set(gift.registryId, summary);
+  for (const row of rows) {
+    summaries.set(row.registryId, {
+      total: row.total,
+      claimed: row.claimed,
+    });
   }
 
   return summaries;

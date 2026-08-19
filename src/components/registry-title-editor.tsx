@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button, buttonClasses } from "@/components/button";
+import { buttonClasses } from "@/components/button";
+import { SubmitButton } from "@/components/submit-button";
 import { inputClass, labelClass } from "@/components/field";
 import { updateRegistry } from "@/app/registries/[id]/actions";
 import { TITLE_MAX_LENGTH } from "@/lib/field-limits";
+import { formatEventDate } from "@/lib/format-date";
 
 export function RegistryTitleEditor({
   registryId,
@@ -56,9 +58,7 @@ export function RegistryTitleEditor({
         </div>
 
         <div className="flex gap-3">
-          <Button type="submit" size="sm">
-            Save changes
-          </Button>
+          <SubmitButton size="sm">Save changes</SubmitButton>
           <button
             type="button"
             className={buttonClasses("ghost", "sm")}
@@ -74,7 +74,11 @@ export function RegistryTitleEditor({
   return (
     <div>
       <h1 className="font-display text-[26px] font-bold text-ink">{title}</h1>
-      {eventDate && <p className="mt-1.5 text-sm text-ink-dim">{eventDate}</p>}
+      {eventDate && (
+        <p className="mt-1.5 text-sm text-ink-dim">
+          {formatEventDate(eventDate)}
+        </p>
+      )}
       {canManage && (
         <button
           type="button"

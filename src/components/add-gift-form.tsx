@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Button } from "@/components/button";
+import { SubmitButton } from "@/components/submit-button";
 import { inputClass, labelClass, sectionTitleClass } from "@/components/field";
 import { addGift } from "@/app/registries/[id]/actions";
 import {
@@ -10,12 +10,40 @@ import {
   QUANTITY_MAX,
 } from "@/lib/field-limits";
 
-export function AddGiftForm({ registryId }: { registryId: string }) {
+export function AddGiftForm({
+  registryId,
+  onOptimisticAdd,
+}: {
+  registryId: string;
+  onOptimisticAdd?: (gift: {
+    name: string;
+    notes: string | null;
+    quantity: number;
+  }) => void;
+}) {
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleAdd(formData: FormData) {
-    await addGift(registryId, formData);
+    const name = formData.get("name") as string;
+    if (!name) return;
+
+    // Mirror the server's normalisation (see addGift in
+    // src/app/registries/[id]/actions.ts) so the optimistic card matches
+    // what the revalidated list will show.
+    const rawQuantity = Number.parseInt(formData.get("quantity") as string, 10);
+    onOptimisticAdd?.({
+      name,
+      notes: (formData.get("notes") as string) || null,
+      quantity:
+        Number.isInteger(rawQuantity) && rawQuantity > 0
+          ? Math.min(rawQuantity, QUANTITY_MAX)
+          : 1,
+    });
+
+    // Reset before awaiting: the gift is already visible in the list, and
+    // the cleared form lets the user type the next one straight away.
     formRef.current?.reset();
+    await addGift(registryId, formData);
   }
 
   return (
@@ -25,7 +53,7 @@ export function AddGiftForm({ registryId }: { registryId: string }) {
       className="flex flex-col gap-3 rounded-2xl border border-dashed border-line bg-surface p-4"
     >
       <h2 className={sectionTitleClass}>Add a gift</h2>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="flex flex-1 flex-col gap-1.5">
           <label htmlFor="add-gift-name" className={labelClass}>
             Gift name
@@ -54,8 +82,6 @@ export function AddGiftForm({ registryId }: { registryId: string }) {
             className={inputClass}
           />
         </div>
-
-        <Button type="submit">Add gift</Button>
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -69,6 +95,10 @@ export function AddGiftForm({ registryId }: { registryId: string }) {
           maxLength={NOTES_MAX_LENGTH}
           className={inputClass}
         />
+      </div>
+
+      <div>
+        <SubmitButton>Add gift</SubmitButton>
       </div>
     </form>
   );

@@ -41,8 +41,16 @@ export function AccountMenu() {
 
   // The parent header already confirmed (server-side, via auth()) that
   // someone is signed in, so this is just the brief window before Clerk's
-  // client SDK finishes hydrating — nothing to show yet.
-  if (!isLoaded || !user) return null;
+  // client SDK finishes hydrating — hold the chip's footprint so the
+  // header doesn't shift when the real button appears.
+  if (!isLoaded || !user) {
+    return (
+      <div
+        className="h-9 w-32 animate-pulse rounded-full border border-line bg-canvas"
+        aria-hidden="true"
+      />
+    );
+  }
 
   const email = user.primaryEmailAddress?.emailAddress ?? "";
   const displayName =

@@ -168,6 +168,9 @@ Then("I see a link I can share with others", async ({ page }) => {
 
 When("I get a new share link", async ({ page, registry }) => {
   registry.oldShareUrl = await page.getByLabel("Share link").inputValue();
+  // Regenerating asks for confirmation (window.confirm); Playwright
+  // dismisses dialogs by default, which would cancel the regeneration.
+  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Get a new share link" }).click();
   // The click resolves once the request is sent, not once the server
   // action + revalidation have actually finished — wait for the displayed
@@ -178,8 +181,14 @@ When("I get a new share link", async ({ page, registry }) => {
 });
 
 Then("the old share link no longer works", async ({ page, registry }) => {
-  const response = await page.goto(registry.oldShareUrl);
-  expect(response?.status()).toBe(404);
+  // The share route streams (loading.tsx), so a dead token can't set a 404
+  // status — headers go out with the skeleton before the DB lookup calls
+  // notFound(). Assert on what the visitor actually sees instead: the
+  // dead-link explanation from src/app/share/[token]/not-found.tsx.
+  await page.goto(registry.oldShareUrl);
+  await expect(
+    page.getByRole("heading", { name: "This share link isn't working" }),
+  ).toBeVisible();
 });
 
 Then("I do not see who claimed the gift", async ({ page }) => {

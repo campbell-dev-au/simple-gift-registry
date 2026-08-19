@@ -117,6 +117,9 @@ Then(
 
 When("I remove the gift", async ({ page, registry }) => {
   await page.goto(`/registries/${registry.id}`);
+  // Removing a gift asks for confirmation (window.confirm); Playwright
+  // dismisses dialogs by default, which would cancel the removal.
+  page.once("dialog", (dialog) => dialog.accept());
   await page
     .getByRole("button", { name: `Remove ${EXISTING_GIFT_NAME}` })
     .click();
