@@ -1,5 +1,5 @@
 import { createRegistry } from "./actions";
-import { Button } from "@/components/button";
+import { SubmitButton } from "@/components/submit-button";
 import { inputClass, labelClass } from "@/components/field";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { TITLE_MAX_LENGTH } from "@/lib/field-limits";
@@ -43,7 +43,7 @@ export default function NewRegistryPage() {
           />
         </div>
 
-        <Button type="submit">Create registry</Button>
+        <SubmitButton>Create registry</SubmitButton>
       </form>
     </main>
   );

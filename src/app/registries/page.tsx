@@ -5,7 +5,9 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { registries, registryInvitations, registrySaves } from "@/db/schema";
 import { getClaimSummaries } from "@/lib/registry-claims";
-import { Button, buttonClasses } from "@/components/button";
+import { formatEventDate } from "@/lib/format-date";
+import { buttonClasses } from "@/components/button";
+import { SubmitButton } from "@/components/submit-button";
 import { ClaimProgress } from "@/components/claim-progress";
 import { sectionTitleClass } from "@/components/field";
 import {
@@ -20,43 +22,48 @@ export default async function RegistriesPage() {
 
   const db = getDb();
 
-  const ownedRegistries = await db
-    .select()
-    .from(registries)
-    .where(eq(registries.ownerId, userId));
-
-  const coOwnedRegistries = await db
-    .select({
-      id: registries.id,
-      title: registries.title,
-      eventDate: registries.eventDate,
-      archivedAt: registries.archivedAt,
-      ownerId: registries.ownerId,
-      shareToken: registries.shareToken,
-      revealClaims: registries.revealClaims,
-      createdAt: registries.createdAt,
-    })
-    .from(registryInvitations)
-    .innerJoin(registries, eq(registryInvitations.registryId, registries.id))
-    .where(
-      and(
-        eq(registryInvitations.status, "accepted"),
-        eq(registryInvitations.acceptedByUserId, userId),
-      ),
-    );
+  // These four are independent, and each is a full round trip (remote
+  // Postgres; currentUser() is a Clerk API call) — running them
+  // sequentially was most of this page's load time.
+  const [ownedRegistries, coOwnedRegistries, savedRegistriesRaw, user] =
+    await Promise.all([
+      db.select().from(registries).where(eq(registries.ownerId, userId)),
+      db
+        .select({
+          id: registries.id,
+          title: registries.title,
+          eventDate: registries.eventDate,
+          archivedAt: registries.archivedAt,
+          ownerId: registries.ownerId,
+          shareToken: registries.shareToken,
+          revealClaims: registries.revealClaims,
+          createdAt: registries.createdAt,
+        })
+        .from(registryInvitations)
+        .innerJoin(
+          registries,
+          eq(registryInvitations.registryId, registries.id),
+        )
+        .where(
+          and(
+            eq(registryInvitations.status, "accepted"),
+            eq(registryInvitations.acceptedByUserId, userId),
+          ),
+        ),
+      db
+        .select({
+          id: registries.id,
+          title: registries.title,
+          shareToken: registries.shareToken,
+        })
+        .from(registrySaves)
+        .innerJoin(registries, eq(registrySaves.registryId, registries.id))
+        .where(eq(registrySaves.savedByUserId, userId)),
+      currentUser(),
+    ]);
 
   const myRegistries = [...ownedRegistries, ...coOwnedRegistries];
   const myRegistryIds = new Set(myRegistries.map((r) => r.id));
-
-  const savedRegistriesRaw = await db
-    .select({
-      id: registries.id,
-      title: registries.title,
-      shareToken: registries.shareToken,
-    })
-    .from(registrySaves)
-    .innerJoin(registries, eq(registrySaves.registryId, registries.id))
-    .where(eq(registrySaves.savedByUserId, userId));
 
   // A saved registry the viewer also owns or co-owns (e.g. saved before
   // accepting a co-owner invitation) already appears above — no need to
@@ -65,15 +72,18 @@ export default async function RegistriesPage() {
     (r) => !myRegistryIds.has(r.id),
   );
 
-  const user = await currentUser();
   const verifiedEmails = (user?.emailAddresses ?? [])
     .filter((address) => address.verification?.status === "verified")
     .map((address) => address.emailAddress.toLowerCase());
 
-  const pendingInvitations =
+  // Only pull claim data for registries the viewer has explicitly opted
+  // into seeing (see reveal_claims in src/db/schema.ts) — owned/co-owned
+  // registries stay a surprise by default. Saved registries are always
+  // someone else's, so there's no surprise to protect there.
+  const [pendingInvitations, claimSummaries] = await Promise.all([
     verifiedEmails.length === 0
       ? []
-      : await db
+      : db
           .select({
             id: registryInvitations.id,
             email: registryInvitations.email,
@@ -89,19 +99,15 @@ export default async function RegistriesPage() {
               eq(registryInvitations.status, "pending"),
               inArray(registryInvitations.email, verifiedEmails),
             ),
-          );
+          ),
+    getClaimSummaries(db, [
+      ...myRegistries.filter((r) => r.revealClaims).map((r) => r.id),
+      ...savedRegistries.map((r) => r.id),
+    ]),
+  ]);
 
   const activeRegistries = myRegistries.filter((r) => !r.archivedAt);
   const archivedRegistries = myRegistries.filter((r) => r.archivedAt);
-
-  // Only pull claim data for registries the viewer has explicitly opted
-  // into seeing (see reveal_claims in src/db/schema.ts) — owned/co-owned
-  // registries stay a surprise by default. Saved registries are always
-  // someone else's, so there's no surprise to protect there.
-  const claimSummaries = await getClaimSummaries(db, [
-    ...myRegistries.filter((r) => r.revealClaims).map((r) => r.id),
-    ...savedRegistries.map((r) => r.id),
-  ]);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-10">
@@ -132,14 +138,12 @@ export default async function RegistriesPage() {
                 </p>
                 <div className="mt-3 flex gap-3">
                   <form action={acceptInvitation.bind(null, invitation.id)}>
-                    <Button type="submit" size="sm">
-                      Accept
-                    </Button>
+                    <SubmitButton size="sm">Accept</SubmitButton>
                   </form>
                   <form action={declineInvitation.bind(null, invitation.id)}>
-                    <Button type="submit" variant="ghost" size="sm">
+                    <SubmitButton variant="ghost" size="sm">
                       Decline
-                    </Button>
+                    </SubmitButton>
                   </form>
                 </div>
               </li>
@@ -150,7 +154,14 @@ export default async function RegistriesPage() {
 
       {myRegistries.length === 0 ? (
         <p className="text-sm text-ink-dim">
-          You don&apos;t have any registries yet.
+          You don&apos;t have any registries yet.{" "}
+          <Link
+            href="/registries/new"
+            className="text-violet hover:underline"
+          >
+            Create your first one
+          </Link>{" "}
+          — it only takes a minute.
         </p>
       ) : activeRegistries.length === 0 ? (
         <p className="text-sm text-ink-dim">
@@ -177,7 +188,7 @@ export default async function RegistriesPage() {
                       </Link>
                       {registry.eventDate && (
                         <p className="mt-0.5 text-xs text-ink-dim">
-                          {registry.eventDate}
+                          {formatEventDate(registry.eventDate)}
                         </p>
                       )}
                     </div>
@@ -216,13 +227,13 @@ export default async function RegistriesPage() {
                       {registry.title}
                     </Link>
                     <form action={removeSavedRegistry.bind(null, registry.id)}>
-                      <button
-                        type="submit"
+                      <SubmitButton
+                        variant="text"
+                        size="sm"
                         aria-label={`Remove ${registry.title} from my registries`}
-                        className={buttonClasses("text", "sm")}
                       >
                         Remove
-                      </button>
+                      </SubmitButton>
                     </form>
                   </div>
                   {summary && summary.total > 0 && (

@@ -43,6 +43,18 @@ export function IconGift({ className }: IconProps) {
   );
 }
 
+export function IconSpinner({ className }: IconProps) {
+  return (
+    <svg
+      {...shared}
+      className={`animate-spin ${className ?? ""}`}
+      aria-hidden="true"
+    >
+      <path d="M12 3a9 9 0 1 0 9 9" />
+    </svg>
+  );
+}
+
 export function IconGoogle({ className }: IconProps) {
   return (
     <svg

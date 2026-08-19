@@ -4,11 +4,12 @@ import { eq, and, inArray } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { registries, gifts, giftClaims, registrySaves } from "@/db/schema";
-import { claimGift, unclaimGift, saveRegistry, unsaveRegistry } from "./actions";
-import { Button, buttonClasses } from "@/components/button";
+import { unclaimGift, saveRegistry, unsaveRegistry } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
+import { ClaimForm } from "@/components/claim-form";
 import { Pill } from "@/components/pill";
 import { ClaimProgress } from "@/components/claim-progress";
-import { inputClass } from "@/components/field";
+import { formatEventDate } from "@/lib/format-date";
 
 export default async function SharePage({
   params,
@@ -30,41 +31,41 @@ export default async function SharePage({
 
   if (!registry) notFound();
 
-  const registryGifts = await db
-    .select()
-    .from(gifts)
-    .where(eq(gifts.registryId, registry.id));
+  const isOwner = userId === registry.ownerId;
 
-  const claims =
-    registryGifts.length === 0
-      ? []
-      : await db
-          .select()
-          .from(giftClaims)
+  // One parallel wave: claims don't need the gift list first — a subquery
+  // scopes them to this registry's gifts in the same round trip.
+  const [registryGifts, claims, saves] = await Promise.all([
+    db.select().from(gifts).where(eq(gifts.registryId, registry.id)),
+    db
+      .select()
+      .from(giftClaims)
+      .where(
+        inArray(
+          giftClaims.giftId,
+          db
+            .select({ id: gifts.id })
+            .from(gifts)
+            .where(eq(gifts.registryId, registry.id)),
+        ),
+      ),
+    userId && !isOwner
+      ? db
+          .select({ id: registrySaves.id })
+          .from(registrySaves)
           .where(
-            inArray(
-              giftClaims.giftId,
-              registryGifts.map((gift) => gift.id),
+            and(
+              eq(registrySaves.registryId, registry.id),
+              eq(registrySaves.savedByUserId, userId),
             ),
-          );
+          )
+      : [],
+  ]);
+
+  const isSaved = saves.length > 0;
 
   const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(`/share/${token}`)}`;
   const signUpUrl = `/sign-up?redirect_url=${encodeURIComponent(`/share/${token}`)}`;
-
-  const isOwner = userId === registry.ownerId;
-  let isSaved = false;
-  if (userId && !isOwner) {
-    const [save] = await db
-      .select({ id: registrySaves.id })
-      .from(registrySaves)
-      .where(
-        and(
-          eq(registrySaves.registryId, registry.id),
-          eq(registrySaves.savedByUserId, userId),
-        ),
-      );
-    isSaved = !!save;
-  }
 
   const totalQuantity = registryGifts.reduce((sum, g) => sum + g.quantity, 0);
   const totalClaimed = registryGifts.reduce((sum, gift) => {
@@ -90,7 +91,9 @@ export default async function SharePage({
           {registry.title}
         </h1>
         {registry.eventDate && (
-          <p className="mt-1.5 text-sm text-ink-dim">{registry.eventDate}</p>
+          <p className="mt-1.5 text-sm text-ink-dim">
+            {formatEventDate(registry.eventDate)}
+          </p>
         )}
 
         {totalQuantity > 0 && (
@@ -103,15 +106,15 @@ export default async function SharePage({
           <div className="mt-4">
             {isSaved ? (
               <form action={unsaveRegistry.bind(null, token)}>
-                <button type="submit" className={buttonClasses("text")}>
+                <SubmitButton variant="text">
                   Remove from my registries
-                </button>
+                </SubmitButton>
               </form>
             ) : (
               <form action={saveRegistry.bind(null, token)}>
-                <button type="submit" className={buttonClasses("text")}>
+                <SubmitButton variant="text">
                   Save to my registries
-                </button>
+                </SubmitButton>
               </form>
             )}
           </div>
@@ -221,13 +224,15 @@ function GiftListItem({
   return (
     <li className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-semibold text-ink">{gift.name}</p>
+        <div className="min-w-0">
+          <p className="break-words font-semibold text-ink">{gift.name}</p>
           <p className="mt-0.5 text-xs text-ink-dim">
             Quantity: {gift.quantity}
           </p>
           {gift.notes && (
-            <p className="mt-1 text-xs text-ink-dim">{gift.notes}</p>
+            <p className="mt-1 break-words text-xs text-ink-dim">
+              {gift.notes}
+            </p>
           )}
         </div>
         <Pill tone={tone}>{label}</Pill>
@@ -239,44 +244,24 @@ function GiftListItem({
             Claimed by you ({myClaim.quantity})
           </span>
           <form action={unclaimGift.bind(null, token, gift.id)}>
-            <Button
-              type="submit"
+            <SubmitButton
               variant="ghost"
               size="sm"
               aria-label={`Unclaim ${gift.name}`}
             >
               Unclaim
-            </Button>
+            </SubmitButton>
           </form>
         </div>
       )}
 
       {!myClaim && remaining > 0 && userId && (
-        <form
-          action={claimGift.bind(null, token, gift.id)}
-          className="mt-3 flex items-center gap-2"
-        >
-          <label htmlFor={`quantity-${gift.id}`} className="sr-only">
-            Quantity to claim
-          </label>
-          <input
-            id={`quantity-${gift.id}`}
-            name="quantity"
-            type="number"
-            min={1}
-            max={remaining}
-            defaultValue={1}
-            className={`${inputClass} !w-16 py-1.5 text-center font-mono text-sm`}
-          />
-          <Button
-            type="submit"
-            variant="claim"
-            size="sm"
-            aria-label={`Claim ${gift.name}`}
-          >
-            Claim
-          </Button>
-        </form>
+        <ClaimForm
+          token={token}
+          giftId={gift.id}
+          giftName={gift.name}
+          remaining={remaining}
+        />
       )}
 
       {remaining > 0 && !userId && (

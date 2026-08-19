@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { buttonClasses, Button } from "@/components/button";
+import { buttonClasses } from "@/components/button";
+import { SubmitButton } from "@/components/submit-button";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { Pill, type PillTone } from "@/components/pill";
 import { inputClass, labelClass } from "@/components/field";
 import { updateGift, deleteGift } from "@/app/registries/[id]/actions";
@@ -91,9 +93,7 @@ export function GiftCard({
           </div>
 
           <div className="flex gap-3">
-            <Button type="submit" size="sm">
-              Save changes
-            </Button>
+            <SubmitButton size="sm">Save changes</SubmitButton>
             <button
               type="button"
               className={buttonClasses("ghost", "sm")}
@@ -126,13 +126,15 @@ export function GiftCard({
       className="rounded-2xl border border-line bg-surface p-4 shadow-sm"
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-semibold text-ink">{gift.name}</p>
+        <div className="min-w-0">
+          <p className="break-words font-semibold text-ink">{gift.name}</p>
           <p className="mt-0.5 text-xs text-ink-dim">
             Quantity: {gift.quantity}
           </p>
           {gift.notes && (
-            <p className="mt-1 text-xs text-ink-dim">{gift.notes}</p>
+            <p className="mt-1 break-words text-xs text-ink-dim">
+              {gift.notes}
+            </p>
           )}
         </div>
         {showClaims && <Pill tone={tone}>{label}</Pill>}
@@ -148,13 +150,14 @@ export function GiftCard({
             Edit
           </button>
           <form action={deleteGift.bind(null, registryId, gift.id)}>
-            <button
-              type="submit"
+            <ConfirmSubmitButton
+              confirmMessage={`Remove "${gift.name}" from the registry? If a guest has already claimed it, their claim disappears too.`}
+              variant="text"
+              size="sm"
               aria-label={`Remove ${gift.name}`}
-              className={buttonClasses("text", "sm")}
             >
               Remove
-            </button>
+            </ConfirmSubmitButton>
           </form>
         </div>
       )}

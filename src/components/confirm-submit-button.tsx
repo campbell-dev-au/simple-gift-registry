@@ -1,12 +1,14 @@
 "use client";
 
 import type { ButtonHTMLAttributes } from "react";
-import { Button, type ButtonSize, type ButtonVariant } from "./button";
+import { SubmitButton } from "./submit-button";
+import type { ButtonSize, ButtonVariant } from "./button";
 
-// A plain submit button that requires an explicit browser confirmation
-// before the form actually submits — for actions that need a deliberate
-// second step (e.g. turning on claim visibility) but don't warrant a full
-// custom modal.
+// A submit button that requires an explicit browser confirmation before the
+// form actually submits — for actions that need a deliberate second step
+// (e.g. turning on claim visibility, deleting a gift) but don't warrant a
+// full custom modal. Builds on SubmitButton, so a confirmed submit still
+// gets the disabled-with-spinner pending state.
 export function ConfirmSubmitButton({
   confirmMessage,
   variant = "primary",
@@ -19,8 +21,7 @@ export function ConfirmSubmitButton({
   size?: ButtonSize;
 }) {
   return (
-    <Button
-      type="submit"
+    <SubmitButton
       variant={variant}
       size={size}
       className={className}

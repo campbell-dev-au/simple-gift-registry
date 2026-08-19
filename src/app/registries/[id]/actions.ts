@@ -191,9 +191,17 @@ export async function regenerateShareLink(registryId: string) {
   revalidatePath(`/registries/${registryId}`);
 }
 
+export type InviteResult = { ok: true } | { error: string } | null;
+
 // Any owner or co-owner can invite further co-owners — full parity, not
-// just the original owner (see docs/stories/invite-co-owner.md).
-export async function inviteCoOwner(registryId: string, formData: FormData) {
+// just the original owner (see docs/stories/invite-co-owner.md). Signature
+// shaped for useActionState (prevState before formData) so the form can
+// confirm success and surface a bad email inline instead of throwing.
+export async function inviteCoOwner(
+  registryId: string,
+  _prevState: InviteResult,
+  formData: FormData,
+): Promise<InviteResult> {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
@@ -201,10 +209,9 @@ export async function inviteCoOwner(registryId: string, formData: FormData) {
   await requireRegistryAccess(db, registryId, userId);
 
   const email = (formData.get("email") as string).trim().toLowerCase();
-  if (!email || !email.includes("@")) {
-    throw new Error("Invalid email address.");
+  if (!email || !email.includes("@") || email.length > EMAIL_MAX_LENGTH) {
+    return { error: "That doesn't look like a valid email address." };
   }
-  assertMaxLength(email, EMAIL_MAX_LENGTH, "Email address");
 
   const [existing] = await db
     .select({ id: registryInvitations.id })
@@ -217,6 +224,8 @@ export async function inviteCoOwner(registryId: string, formData: FormData) {
       ),
     );
 
+  // An already-pending invitation counts as success — it's idempotent, and
+  // the pending list on the page shows the state either way.
   if (!existing) {
     await db.insert(registryInvitations).values({
       registryId,
@@ -226,6 +235,7 @@ export async function inviteCoOwner(registryId: string, formData: FormData) {
   }
 
   revalidatePath(`/registries/${registryId}`);
+  return { ok: true };
 }
 
 export async function cancelInvitation(registryId: string, invitationId: string) {
