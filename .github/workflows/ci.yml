@@ -20,7 +20,21 @@ jobs:
       - run: npm run typecheck
       - run: npm run knip
       - run: npm run build
+        env:
+          # Inlined into the client bundle at build time; test:bdd:app runs
+          # `next start` against this build, so Clerk needs it here too.
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
         timeout-minutes: 5
         env:
@@ -30,6 +44,12 @@ jobs:
           # produces an actionable log rather than burning the timeout.
           DEBIAN_FRONTEND: noninteractive
           DEBUG: pw:install
+      - name: Install Playwright OS deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+        timeout-minutes: 5
+        env:
+          DEBIAN_FRONTEND: noninteractive
       # Homepage + registry scenarios only. features/account/ drives Clerk's
       # real dev-instance sign-up/sign-in/sign-out UI (rate-limited, capped
       # at 100 users) — run test:bdd:account manually when working on auth,

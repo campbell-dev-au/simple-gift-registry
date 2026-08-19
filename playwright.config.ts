@@ -38,13 +38,23 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev -- -p 3100",
+    // CI serves the production build from the preceding `next build` step —
+    // faster than dev-mode on-demand compilation, and it tests the artifact
+    // that actually deploys. Locally a dev server picks up uncommitted
+    // changes without a rebuild.
+    command: process.env.CI
+      ? "npm run start -- -p 3100"
+      : "npm run dev -- -p 3100",
     url: "http://localhost:3100",
     reuseExistingServer: !process.env.CI,
     stdout: "pipe",
-    // A distinct distDir (see next.config.ts) so this dev server doesn't
-    // collide, via Next's dev-server lockfile, with one already running
-    // manually (e.g. on port 3002) for the same project.
-    env: { ...process.env, NEXT_DIST_DIR: ".next-test" },
+    // Locally, a distinct distDir (see next.config.ts) so this dev server
+    // doesn't collide, via Next's dev-server lockfile, with one already
+    // running manually (e.g. on port 3002) for the same project. In CI,
+    // inherit process.env unchanged so `next start` uses the distDir the
+    // build step produced.
+    env: process.env.CI
+      ? undefined
+      : { ...process.env, NEXT_DIST_DIR: ".next-test" },
   },
 });
