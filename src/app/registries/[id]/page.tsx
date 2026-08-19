@@ -10,7 +10,7 @@ import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { Pill } from "@/components/pill";
 import { ClaimProgress } from "@/components/claim-progress";
 import { Avatar } from "@/components/avatar";
-import { IconLink, IconUsers } from "@/components/icons";
+import { IconLink, IconUsers, IconX } from "@/components/icons";
 import { sectionTitleClass } from "@/components/field";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { RegistryTitleEditor } from "@/components/registry-title-editor";
@@ -146,6 +146,7 @@ export default async function RegistryPage({
           registryId={registry.id}
           title={registry.title}
           eventDate={registry.eventDate}
+          notes={registry.notes}
           canManage={canManage}
         />
         <div className="flex flex-col items-end gap-2">
@@ -250,23 +251,29 @@ export default async function RegistryPage({
               ) : (
                 <ul className="flex flex-col gap-2">
                   {primaryOwnerEmail && (
-                    <li className="flex items-center justify-between gap-3 rounded-xl border border-line bg-canvas p-2.5">
-                      <span className="flex min-w-0 items-center gap-2.5 text-sm text-ink">
-                        <Avatar email={primaryOwnerEmail} />
-                        <span className="break-all">
-                          {primaryOwnerEmail} · Owner
-                        </span>
+                    <li className="flex items-center gap-2.5 rounded-xl border border-line bg-canvas p-2">
+                      <Avatar email={primaryOwnerEmail} />
+                      <span
+                        className="min-w-0 flex-1 overflow-hidden text-sm text-ellipsis whitespace-nowrap text-ink"
+                        title={`${primaryOwnerEmail} · Owner`}
+                      >
+                        {primaryOwnerEmail} · Owner
                       </span>
                     </li>
                   )}
                   {otherAcceptedCoOwners.map((invitation) => (
                     <li
                       key={invitation.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-line bg-canvas p-2.5"
+                      className="flex items-center gap-2.5 rounded-xl border border-line bg-canvas p-2"
                     >
-                      <span className="flex min-w-0 items-center gap-2.5 text-sm text-ink">
+                      <span className="flex min-w-0 flex-1 items-center gap-2.5">
                         <Avatar email={invitation.email} />
-                        <span className="break-all">{invitation.email}</span>
+                        <span
+                          className="min-w-0 overflow-hidden text-sm text-ellipsis whitespace-nowrap text-ink"
+                          title={invitation.email}
+                        >
+                          {invitation.email}
+                        </span>
                       </span>
                       {isPrimaryOwner && (
                         <form
@@ -278,11 +285,11 @@ export default async function RegistryPage({
                         >
                           <ConfirmSubmitButton
                             confirmMessage={`Remove ${invitation.email} as a co-owner? They'll lose access to managing this registry.`}
-                            variant="text"
-                            size="sm"
+                            variant="icon"
                             aria-label={`Remove co-owner ${invitation.email}`}
+                            title="Remove co-owner"
                           >
-                            Remove
+                            <IconX />
                           </ConfirmSubmitButton>
                         </form>
                       )}
@@ -300,9 +307,12 @@ export default async function RegistryPage({
                     {pendingInvitations.map((invitation) => (
                       <li
                         key={invitation.id}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-line bg-canvas p-2.5"
+                        className="flex items-center gap-2.5 rounded-xl border border-dashed border-line bg-canvas p-2"
                       >
-                        <span className="min-w-0 break-all text-sm text-ink-dim">
+                        <span
+                          className="min-w-0 flex-1 overflow-hidden text-sm text-ellipsis whitespace-nowrap text-ink-dim"
+                          title={invitation.email}
+                        >
                           {invitation.email}
                         </span>
                         <form
@@ -313,11 +323,11 @@ export default async function RegistryPage({
                           )}
                         >
                           <SubmitButton
-                            variant="text"
-                            size="sm"
+                            variant="icon"
                             aria-label={`Cancel invitation to ${invitation.email}`}
+                            title="Cancel invitation"
                           >
-                            Cancel
+                            <IconX />
                           </SubmitButton>
                         </form>
                       </li>

@@ -6,8 +6,10 @@
 export const TITLE_MAX_LENGTH = 200;
 export const GIFT_NAME_MAX_LENGTH = 200;
 export const NOTES_MAX_LENGTH = 1000;
+export const REGISTRY_NOTES_MAX_LENGTH = 2000;
 export const EMAIL_MAX_LENGTH = 254;
 export const QUANTITY_MAX = 999;
+export const GIFT_COUNT_MAX = 50;
 export const NAME_MAX_LENGTH = 100;
 export const PASSWORD_MAX_LENGTH = 128;
 

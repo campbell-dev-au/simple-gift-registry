@@ -52,6 +52,9 @@ export async function claimGift(
 
   const db = getDb();
   const registry = await requireRegistryByShareToken(db, token);
+  if (registry.archivedAt) {
+    return { error: "This registry has been archived and isn't accepting claims." };
+  }
 
   // The FOR UPDATE lock on the gift row serializes concurrent claimants of
   // the same gift, so the "already claimed" sum read below can't be stale

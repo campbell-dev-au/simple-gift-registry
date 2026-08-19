@@ -5,6 +5,7 @@ import { AddGiftForm } from "@/components/add-gift-form";
 import { GiftCard } from "@/components/gift-card";
 import { IconGift } from "@/components/icons";
 import { sectionTitleClass } from "@/components/field";
+import { GIFT_COUNT_MAX } from "@/lib/field-limits";
 
 export type GiftListItem = {
   id: string;
@@ -38,31 +39,42 @@ export function GiftList({
     (state, newGift: OptimisticGift) => [...state, newGift],
   );
 
+  const atLimit = optimisticGifts.length >= GIFT_COUNT_MAX;
+
   return (
     <div className="flex flex-col gap-4">
-      {canManage && (
-        <AddGiftForm
-          registryId={registryId}
-          onOptimisticAdd={(gift) =>
-            addOptimisticGift({
-              ...gift,
-              id: crypto.randomUUID(),
-              claimed: 0,
-              pending: true,
-            })
-          }
-        />
-      )}
+      {canManage &&
+        (atLimit ? (
+          <p className="rounded-2xl border border-dashed border-line bg-surface p-4 text-sm text-ink-dim">
+            This registry has reached the limit of {GIFT_COUNT_MAX} gifts.
+            Remove one to add another.
+          </p>
+        ) : (
+          <AddGiftForm
+            registryId={registryId}
+            onOptimisticAdd={(gift) =>
+              addOptimisticGift({
+                ...gift,
+                id: crypto.randomUUID(),
+                claimed: 0,
+                pending: true,
+              })
+            }
+          />
+        ))}
 
-      <section className="flex flex-col gap-3">
+      <section className="flex min-h-0 flex-col gap-3">
         <h2 className={`${sectionTitleClass} flex items-center gap-2`}>
           <IconGift className="text-violet" />
           Gifts
+          <span className="text-xs font-normal text-ink-dim">
+            {optimisticGifts.length}/{GIFT_COUNT_MAX}
+          </span>
         </h2>
         {optimisticGifts.length === 0 ? (
           <p className="text-sm text-ink-dim">No gifts yet.</p>
         ) : (
-          <ul className="flex flex-col gap-2.5">
+          <ul className="flex max-h-[65vh] flex-col gap-2.5 overflow-y-auto pr-1">
             {optimisticGifts.map((gift) => (
               <GiftCard
                 key={gift.id}

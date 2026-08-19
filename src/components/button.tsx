@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from "react";
 
-export type ButtonVariant = "primary" | "claim" | "ghost" | "text";
+export type ButtonVariant = "primary" | "claim" | "ghost" | "text" | "icon";
 export type ButtonSize = "md" | "sm";
 
 const base =
@@ -12,6 +12,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   ghost:
     "rounded-full border border-line bg-transparent text-ink hover:border-violet hover:text-violet",
   text: "text-violet hover:underline underline-offset-2",
+  icon: "shrink-0 rounded-full p-1.5 text-ink-dim hover:bg-violet/10 hover:text-violet",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -23,7 +24,8 @@ export function buttonClasses(
   variant: ButtonVariant = "primary",
   size: ButtonSize = "md",
 ) {
-  const sizeClass = variant === "text" ? "" : sizeClasses[size];
+  const sizeClass =
+    variant === "text" || variant === "icon" ? "" : sizeClasses[size];
   return `${base} ${variantClasses[variant]} ${sizeClass}`;
 }
 
