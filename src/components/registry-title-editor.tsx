@@ -22,9 +22,15 @@ export function RegistryTitleEditor({
   canManage: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSave(formData: FormData) {
-    await updateRegistry(registryId, formData);
+    setError(null);
+    const result = await updateRegistry(registryId, formData);
+    if (result && "error" in result) {
+      setError(result.error);
+      return;
+    }
     setIsEditing(false);
   }
 
@@ -89,6 +95,11 @@ export function RegistryTitleEditor({
             Cancel
           </button>
         </div>
+        {error && (
+          <p className="text-sm text-amber" role="status">
+            {error}
+          </p>
+        )}
       </form>
     );
   }

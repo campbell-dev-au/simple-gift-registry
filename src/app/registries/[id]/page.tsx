@@ -5,6 +5,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { registries, gifts, giftClaims, registryInvitations } from "@/db/schema";
 import { canManageRegistry } from "@/lib/registry-access";
+import { isUuid } from "@/lib/validation";
 import { SubmitButton } from "@/components/submit-button";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { Pill } from "@/components/pill";
@@ -16,6 +17,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { RegistryTitleEditor } from "@/components/registry-title-editor";
 import { GiftList } from "@/components/gift-list";
 import { ShareLink } from "@/components/share-link";
+import { SharePasswordSection } from "@/components/share-password-section";
 import { InviteCoOwnerForm } from "@/components/invite-co-owner-form";
 import {
   archiveRegistry,
@@ -33,8 +35,7 @@ export default async function RegistryPage({
 }) {
   const { id } = await params;
 
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-  if (!isUuid) notFound();
+  if (!isUuid(id)) notFound();
 
   const { userId } = await auth();
 
@@ -53,6 +54,13 @@ export default async function RegistryPage({
     db.select().from(gifts).where(eq(gifts.registryId, id)),
     canManageRegistry(db, registry.ownerId, registry.id, userId ?? null),
   ]);
+
+  // This is the management page, not the share page — anyone who isn't the
+  // owner or a co-owner gets a 404, exactly as if the registry didn't
+  // exist. Guests view via /share/[shareToken], which the owner can rotate;
+  // this id can't be rotated, so it must never work as a read-only
+  // back door (e.g. for a removed co-owner who still has the URL).
+  if (!canManage) notFound();
 
   // Hidden by default even from the owner/co-owners — see reveal_claims in
   // src/db/schema.ts. Guests always see remaining counts on the share page;
@@ -236,6 +244,12 @@ export default async function RegistryPage({
                   Get a new share link
                 </ConfirmSubmitButton>
               </form>
+              <div className="border-t border-line pt-3">
+                <SharePasswordSection
+                  registryId={registry.id}
+                  hasPassword={!!registry.sharePasswordHash}
+                />
+              </div>
             </section>
 
             <section

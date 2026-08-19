@@ -1,0 +1,2 @@
+ALTER TABLE "registries" ADD COLUMN "share_password_hash" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "registry_invitations_active_email_uidx" ON "registry_invitations" USING btree ("registry_id","email") WHERE "registry_invitations"."status" <> 'declined';

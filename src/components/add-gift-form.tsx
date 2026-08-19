@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { SubmitButton } from "@/components/submit-button";
 import { inputClass, labelClass, sectionTitleClass } from "@/components/field";
 import { addGift } from "@/app/registries/[id]/actions";
@@ -22,6 +22,7 @@ export function AddGiftForm({
   }) => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleAdd(formData: FormData) {
     const name = formData.get("name") as string;
@@ -31,6 +32,7 @@ export function AddGiftForm({
     // src/app/registries/[id]/actions.ts) so the optimistic card matches
     // what the revalidated list will show.
     const rawQuantity = Number.parseInt(formData.get("quantity") as string, 10);
+    setError(null);
     onOptimisticAdd?.({
       name,
       notes: (formData.get("notes") as string) || null,
@@ -41,9 +43,14 @@ export function AddGiftForm({
     });
 
     // Reset before awaiting: the gift is already visible in the list, and
-    // the cleared form lets the user type the next one straight away.
+    // the cleared form lets the user type the next one straight away. If
+    // the server then says no (e.g. the gift cap raced), the optimistic
+    // card rolls back and the error names the gift that didn't make it.
     formRef.current?.reset();
-    await addGift(registryId, formData);
+    const result = await addGift(registryId, formData);
+    if (result && "error" in result) {
+      setError(`"${name}" wasn't added — ${result.error}`);
+    }
   }
 
   return (
@@ -100,6 +107,11 @@ export function AddGiftForm({
       <div>
         <SubmitButton>Add gift</SubmitButton>
       </div>
+      {error && (
+        <p className="text-sm text-amber" role="status">
+          {error}
+        </p>
+      )}
     </form>
   );
 }

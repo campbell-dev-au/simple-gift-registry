@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   uuid,
@@ -7,6 +8,7 @@ import {
   integer,
   boolean,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const registries = pgTable("registries", {
@@ -30,6 +32,12 @@ export const registries = pgTable("registries", {
   // opt-in to go through a confirmation step. Guests always see remaining
   // counts via /share/[token]; this only gates the owner-facing view.
   revealClaims: boolean("reveal_claims").notNull().default(false),
+  // Optional password gate for the share page, stored as `salt:hash` from
+  // scrypt (see src/lib/share-password.ts). Null means the share link alone
+  // is enough. The unlock cookie is HMAC-keyed by this exact value, so
+  // changing or clearing the password invalidates every guest's unlock
+  // cookie at once.
+  sharePasswordHash: text("share_password_hash"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -74,20 +82,32 @@ export const giftClaims = pgTable("gift_claims", {
 // signed-in user's verified email addresses — see
 // docs/stories/invite-co-owner.md for why sending the invite email itself
 // was deliberately left out of this pass.
-export const registryInvitations = pgTable("registry_invitations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  registryId: uuid("registry_id")
-    .notNull()
-    .references(() => registries.id, { onDelete: "cascade" }),
-  email: text("email").notNull(),
-  invitedByUserId: text("invited_by_user_id").notNull(),
-  status: text("status").notNull().default("pending"),
-  acceptedByUserId: text("accepted_by_user_id"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  respondedAt: timestamp("responded_at", { withTimezone: true }),
-});
+export const registryInvitations = pgTable(
+  "registry_invitations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    registryId: uuid("registry_id")
+      .notNull()
+      .references(() => registries.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    invitedByUserId: text("invited_by_user_id").notNull(),
+    status: text("status").notNull().default("pending"),
+    acceptedByUserId: text("accepted_by_user_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+  },
+  // One live (pending or accepted) invitation per email per registry —
+  // backs up inviteCoOwner's check-then-insert against a double-submit
+  // race. Declined rows are excluded so the same address can be re-invited
+  // later. Emails are lowercased before insert (see inviteCoOwner).
+  (table) => [
+    uniqueIndex("registry_invitations_active_email_uidx")
+      .on(table.registryId, table.email)
+      .where(sql`${table.status} <> 'declined'`),
+  ],
+);
 
 // A guest's bookmark on a registry they were shared a link to, so it shows
 // up in their "My registries" list once they're signed in. Deliberately
