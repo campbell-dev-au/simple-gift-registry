@@ -26,12 +26,16 @@ export function GiftCard({
   canManage,
   showClaims,
   claimed,
+  pending = false,
 }: {
   gift: Gift;
   registryId: string;
   canManage: boolean;
   showClaims: boolean;
   claimed: number;
+  // An optimistic entry still being saved — shown dimmed, without the
+  // edit/remove controls (there's no real row to act on yet).
+  pending?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -123,7 +127,9 @@ export function GiftCard({
   return (
     <li
       data-testid={testId}
-      className="rounded-2xl border border-line bg-surface p-4 shadow-sm"
+      className={`rounded-2xl border border-line bg-surface p-4 shadow-sm ${
+        pending ? "animate-pulse opacity-60" : ""
+      }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -139,7 +145,7 @@ export function GiftCard({
         </div>
         {showClaims && <Pill tone={tone}>{label}</Pill>}
       </div>
-      {canManage && (
+      {canManage && !pending && (
         <div className="mt-3 flex gap-4">
           <button
             type="button"

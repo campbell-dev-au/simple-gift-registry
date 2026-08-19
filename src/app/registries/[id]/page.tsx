@@ -10,12 +10,11 @@ import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { Pill } from "@/components/pill";
 import { ClaimProgress } from "@/components/claim-progress";
 import { Avatar } from "@/components/avatar";
-import { IconLink, IconUsers, IconGift } from "@/components/icons";
+import { IconLink, IconUsers } from "@/components/icons";
 import { sectionTitleClass } from "@/components/field";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { RegistryTitleEditor } from "@/components/registry-title-editor";
-import { AddGiftForm } from "@/components/add-gift-form";
-import { GiftCard } from "@/components/gift-card";
+import { GiftList } from "@/components/gift-list";
 import { ShareLink } from "@/components/share-link";
 import { InviteCoOwnerForm } from "@/components/invite-co-owner-form";
 import {
@@ -172,35 +171,18 @@ export default async function RegistryPage({
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="flex flex-col gap-4">
-          {canManage && <AddGiftForm registryId={registry.id} />}
-
-          <section className="flex flex-col gap-3">
-            <h2 className={`${sectionTitleClass} flex items-center gap-2`}>
-              <IconGift className="text-violet" />
-              Gifts
-            </h2>
-            {registryGifts.length === 0 ? (
-              <p className="text-sm text-ink-dim">No gifts yet.</p>
-            ) : (
-              <ul className="flex flex-col gap-2.5">
-                {registryGifts.map((gift) => (
-                  <GiftCard
-                    key={gift.id}
-                    gift={gift}
-                    registryId={registry.id}
-                    canManage={canManage}
-                    showClaims={showClaims}
-                    claimed={Math.min(
-                      claimedByGift.get(gift.id) ?? 0,
-                      gift.quantity,
-                    )}
-                  />
-                ))}
-              </ul>
-            )}
-          </section>
-        </div>
+        <GiftList
+          registryId={registry.id}
+          canManage={canManage}
+          showClaims={showClaims}
+          gifts={registryGifts.map((gift) => ({
+            id: gift.id,
+            name: gift.name,
+            notes: gift.notes,
+            quantity: gift.quantity,
+            claimed: Math.min(claimedByGift.get(gift.id) ?? 0, gift.quantity),
+          }))}
+        />
 
         {canManage && (
           <div className="flex flex-col gap-6">

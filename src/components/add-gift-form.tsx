@@ -10,12 +10,40 @@ import {
   QUANTITY_MAX,
 } from "@/lib/field-limits";
 
-export function AddGiftForm({ registryId }: { registryId: string }) {
+export function AddGiftForm({
+  registryId,
+  onOptimisticAdd,
+}: {
+  registryId: string;
+  onOptimisticAdd?: (gift: {
+    name: string;
+    notes: string | null;
+    quantity: number;
+  }) => void;
+}) {
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleAdd(formData: FormData) {
-    await addGift(registryId, formData);
+    const name = formData.get("name") as string;
+    if (!name) return;
+
+    // Mirror the server's normalisation (see addGift in
+    // src/app/registries/[id]/actions.ts) so the optimistic card matches
+    // what the revalidated list will show.
+    const rawQuantity = Number.parseInt(formData.get("quantity") as string, 10);
+    onOptimisticAdd?.({
+      name,
+      notes: (formData.get("notes") as string) || null,
+      quantity:
+        Number.isInteger(rawQuantity) && rawQuantity > 0
+          ? Math.min(rawQuantity, QUANTITY_MAX)
+          : 1,
+    });
+
+    // Reset before awaiting: the gift is already visible in the list, and
+    // the cleared form lets the user type the next one straight away.
     formRef.current?.reset();
+    await addGift(registryId, formData);
   }
 
   return (
