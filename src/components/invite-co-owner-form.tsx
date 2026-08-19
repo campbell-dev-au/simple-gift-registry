@@ -9,8 +9,10 @@ import { EMAIL_MAX_LENGTH } from "@/lib/field-limits";
 
 // Invite form with inline feedback: a bad email gets a message instead of
 // an error page, and a successful invite clears the input and says what
-// happens next (no email is sent — the invitee sees the invitation on
-// their registries page once signed in with that address).
+// happens next. The success copy follows `emailed` — a notification email
+// only goes out when email is configured and the invite was genuinely new
+// (see inviteCoOwner) — but either way the invitee accepts from their
+// registries page once signed in with that address.
 export function InviteCoOwnerForm({ registryId }: { registryId: string }) {
   const [state, formAction] = useActionState<ActionResult, FormData>(
     inviteCoOwner.bind(null, registryId),
@@ -48,8 +50,9 @@ export function InviteCoOwnerForm({ registryId }: { registryId: string }) {
       )}
       {state && "ok" in state && (
         <p className="text-sm text-mint" role="status">
-          Invited! They&apos;ll see the invitation on their registries page
-          when they sign in with that email.
+          {state.emailed
+            ? "Invited! We've emailed them — they can accept from their registries page after signing in with that email."
+            : "Invited! They'll see the invitation on their registries page when they sign in with that email."}
         </p>
       )}
     </form>

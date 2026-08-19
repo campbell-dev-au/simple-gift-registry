@@ -3,11 +3,18 @@
 import { randomUUID } from "node:crypto";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { waitUntil } from "@vercel/functions";
 import { eq, and, or, count } from "drizzle-orm";
 import { getDb } from "@/db";
 import { registries, gifts, registryInvitations } from "@/db/schema";
 import { canManageRegistry } from "@/lib/registry-access";
+import { currentUserWithRetry } from "@/lib/clerk-user";
+import {
+  inviteEmailConfigured,
+  sendCoOwnerInviteEmail,
+} from "@/lib/invite-email";
 import {
   encryptSharePassword,
   sharePasswordKeyConfigured,
@@ -313,12 +320,14 @@ export async function inviteCoOwner(
   if (!userId) redirect("/sign-in");
 
   const db = getDb();
-  await requireRegistryAccess(db, registryId, userId);
+  const registry = await requireRegistryAccess(db, registryId, userId);
 
   const email = (formData.get("email") as string).trim().toLowerCase();
   if (!email || !email.includes("@") || email.length > EMAIL_MAX_LENGTH) {
     return { error: "That doesn't look like a valid email address." };
   }
+
+  let emailed = false;
 
   const [existing] = await db
     .select({ id: registryInvitations.id })
@@ -357,18 +366,48 @@ export async function inviteCoOwner(
 
     // The partial unique index on (registry_id, email) backs up the check
     // above; a double-submit race lands here and is safely a no-op.
-    await db
+    const inserted = await db
       .insert(registryInvitations)
       .values({
         registryId,
         email,
         invitedByUserId: userId,
       })
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .returning({ id: registryInvitations.id });
+
+    // Notify the invitee by email, only when a row was genuinely created —
+    // re-submitting an existing invite must not re-send. Best-effort and
+    // deferred past the response (the invite stands either way; the Clerk
+    // lookup for the inviter's name shouldn't delay the form), so the
+    // request headers are read here, inside the request scope.
+    if (inserted.length > 0 && inviteEmailConfigured()) {
+      emailed = true;
+      const headersList = await headers();
+      const host = headersList.get("host");
+      const protocol =
+        headersList.get("x-forwarded-proto") ??
+        (host?.startsWith("localhost") ? "http" : "https");
+
+      waitUntil(
+        (async () => {
+          const inviter = await currentUserWithRetry().catch(() => null);
+          await sendCoOwnerInviteEmail({
+            to: email,
+            registryTitle: registry.title,
+            inviterName:
+              inviter?.fullName?.trim() ||
+              inviter?.primaryEmailAddress?.emailAddress ||
+              "Someone",
+            registriesUrl: `${protocol}://${host}/registries`,
+          });
+        })(),
+      );
+    }
   }
 
   revalidatePath(`/registries/${registryId}`);
-  return { ok: true };
+  return { ok: true, emailed };
 }
 
 export async function cancelInvitation(registryId: string, invitationId: string) {
