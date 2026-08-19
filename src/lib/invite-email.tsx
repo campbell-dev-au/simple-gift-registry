@@ -22,13 +22,54 @@ export function inviteEmailConfigured() {
   return Boolean(process.env.RESEND_API_KEY);
 }
 
-function escapeHtml(text: string) {
-  return text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+// The HTML body is a React element rendered by Resend (via
+// @react-email/render) rather than a hand-built HTML string, so the
+// user-controlled registry title and inviter name are escaped by React
+// itself — no manual sanitization to get wrong.
+function InviteEmail({
+  intro,
+  howToAccept,
+  registriesUrl,
+  whoSentThis,
+}: {
+  intro: string;
+  howToAccept: string;
+  registriesUrl: string;
+  whoSentThis: string;
+}) {
+  return (
+    <div
+      style={{
+        fontFamily: "system-ui, sans-serif",
+        maxWidth: "32rem",
+        margin: "0 auto",
+        lineHeight: 1.5,
+      }}
+    >
+      <p>{intro}</p>
+      <p>{howToAccept}</p>
+      <p>
+        <a href={registriesUrl}>Open my registries</a>
+      </p>
+      <hr
+        style={{
+          border: "none",
+          borderTop: "1px solid #ddd",
+          margin: "1.5rem 0",
+        }}
+      />
+      <p style={{ color: "#666", fontSize: "0.875rem" }}>{whoSentThis}</p>
+    </div>
+  );
+}
+
+// Deliberately logs only a message string, never the error object or the
+// send parameters — a failed-send error can echo back the recipient
+// address, which doesn't belong in the logs.
+function logSendFailure(reason: unknown) {
+  const message =
+    reason instanceof Error ? reason.message : "unknown send error";
+  console.error(`Co-owner invite email failed to send: ${message}`);
 }
 
 export async function sendCoOwnerInviteEmail({
@@ -44,7 +85,6 @@ export async function sendCoOwnerInviteEmail({
 }) {
   if (!inviteEmailConfigured()) return;
 
-  const subject = `${inviterName} invited you to help manage "${registryTitle}"`;
   const intro = `${inviterName} invited you to be a co-owner of the gift registry "${registryTitle}".`;
   const howToAccept =
     "To accept, sign in (or create an account) with this email address and " +
@@ -53,29 +93,24 @@ export async function sendCoOwnerInviteEmail({
     "This invitation was created on Simple Gift Registry. If you weren't " +
     "expecting it, you can ignore this email — nothing is shared until you accept.";
 
-  const text = `${intro}\n\n${howToAccept}\n\n${registriesUrl}\n\n${whoSentThis}\n`;
-  const html = `
-<div style="font-family: system-ui, sans-serif; max-width: 32rem; margin: 0 auto; line-height: 1.5;">
-  <p>${escapeHtml(intro)}</p>
-  <p>${escapeHtml(howToAccept)}</p>
-  <p><a href="${escapeHtml(registriesUrl)}">Open my registries</a></p>
-  <hr style="border: none; border-top: 1px solid #ddd; margin: 1.5rem 0;" />
-  <p style="color: #666; font-size: 0.875rem;">${escapeHtml(whoSentThis)}</p>
-</div>`;
-
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
     const { error } = await resend.emails.send({
       from: process.env.EMAIL_FROM ?? FROM_FALLBACK,
       to,
-      subject,
-      text,
-      html,
+      subject: `${inviterName} invited you to help manage "${registryTitle}"`,
+      text: `${intro}\n\n${howToAccept}\n\n${registriesUrl}\n\n${whoSentThis}\n`,
+      react: (
+        <InviteEmail
+          intro={intro}
+          howToAccept={howToAccept}
+          registriesUrl={registriesUrl}
+          whoSentThis={whoSentThis}
+        />
+      ),
     });
-    if (error) {
-      console.error("Co-owner invite email failed to send:", error);
-    }
+    if (error) logSendFailure(new Error(error.message));
   } catch (error) {
-    console.error("Co-owner invite email failed to send:", error);
+    logSendFailure(error);
   }
 }
