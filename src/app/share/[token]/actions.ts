@@ -3,15 +3,26 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { eq, and, sql, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import { registries, gifts, giftClaims, registrySaves } from "@/db/schema";
-import { QUANTITY_MAX } from "@/lib/field-limits";
+import { QUANTITY_MAX, SHARE_PASSWORD_MAX_LENGTH } from "@/lib/field-limits";
+import { isUuid } from "@/lib/validation";
+import type { ActionResult } from "@/lib/action-result";
+import {
+  hasShareAccess,
+  shareAccessCookieName,
+  shareAccessCookieValue,
+  verifySharePassword,
+} from "@/lib/share-password";
 
 async function requireRegistryByShareToken(
   db: ReturnType<typeof getDb>,
   token: string,
 ) {
+  if (!isUuid(token)) throw new Error("Registry not found.");
+
   const [registry] = await db
     .select()
     .from(registries)
@@ -22,6 +33,59 @@ async function requireRegistryByShareToken(
   }
 
   return registry;
+}
+
+// The share page renders a password gate when the registry is protected
+// (see hasShareAccess) — but the gate is just UI. Every action reachable
+// from the share page re-checks the unlock cookie here, so a raw request
+// with the token but without the password gets nowhere.
+async function requireShareUnlock(registry: {
+  id: string;
+  sharePasswordEncrypted: string | null;
+}) {
+  const cookieStore = await cookies();
+  if (!hasShareAccess(registry, cookieStore)) {
+    throw new Error("This registry is password protected.");
+  }
+}
+
+// Verifies the share password and sets the unlock cookie the rest of the
+// share actions (and the page) check. Signature shaped for useActionState.
+export async function unlockShareRegistry(
+  token: string,
+  _prevState: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const db = getDb();
+  const registry = await requireRegistryByShareToken(db, token);
+  if (!registry.sharePasswordEncrypted) return null;
+
+  const password = (formData.get("password") as string | null) ?? "";
+  if (
+    !password ||
+    password.length > SHARE_PASSWORD_MAX_LENGTH ||
+    !verifySharePassword(password, registry.sharePasswordEncrypted)
+  ) {
+    // Verification itself is a cheap decrypt-and-compare, so this delay is
+    // the only per-attempt cost an online guesser pays.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    return { error: "That password isn't right — check with whoever sent you the link." };
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(
+    shareAccessCookieName(registry.id),
+    shareAccessCookieValue(registry.id, registry.sharePasswordEncrypted),
+    {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24 * 30,
+    },
+  );
+
+  revalidatePath(`/share/${token}`);
+  return null;
 }
 
 export type ClaimResult = { error: string } | null;
@@ -38,6 +102,10 @@ export async function claimGift(
   const { userId } = await auth();
   if (!userId) redirect(`/sign-in?redirect_url=/share/${token}`);
 
+  if (!isUuid(giftId)) {
+    return { error: "This gift is no longer on the registry." };
+  }
+
   const requestedQuantity = Number.parseInt(
     formData.get("quantity") as string,
     10,
@@ -52,6 +120,7 @@ export async function claimGift(
 
   const db = getDb();
   const registry = await requireRegistryByShareToken(db, token);
+  await requireShareUnlock(registry);
   if (registry.archivedAt) {
     return { error: "This registry has been archived and isn't accepting claims." };
   }
@@ -113,6 +182,7 @@ export async function saveRegistry(token: string) {
 
   const db = getDb();
   const registry = await requireRegistryByShareToken(db, token);
+  await requireShareUnlock(registry);
   if (userId === registry.ownerId) return;
 
   await db
@@ -147,6 +217,8 @@ export async function unsaveRegistry(token: string) {
 export async function unclaimGift(token: string, giftId: string) {
   const { userId } = await auth();
   if (!userId) redirect(`/sign-in?redirect_url=/share/${token}`);
+
+  if (!isUuid(giftId)) return;
 
   const db = getDb();
   const registry = await requireRegistryByShareToken(db, token);

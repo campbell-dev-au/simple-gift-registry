@@ -59,6 +59,9 @@ jobs:
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Not a secret: encrypts test-only share passwords in the CI
+          # database run. Real environments get theirs from Vercel env.
+          SHARE_PASSWORD_KEY: gift-registry-ci-only-share-password-key
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4

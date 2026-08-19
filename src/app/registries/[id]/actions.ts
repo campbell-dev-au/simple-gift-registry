@@ -4,19 +4,28 @@ import { randomUUID } from "node:crypto";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, count } from "drizzle-orm";
 import { getDb } from "@/db";
 import { registries, gifts, registryInvitations } from "@/db/schema";
 import { canManageRegistry } from "@/lib/registry-access";
 import {
-  assertMaxLength,
+  encryptSharePassword,
+  sharePasswordKeyConfigured,
+} from "@/lib/share-password";
+import { isUuid } from "@/lib/validation";
+import type { ActionResult } from "@/lib/action-result";
+import {
+  maxLengthError,
   TITLE_MAX_LENGTH,
   GIFT_NAME_MAX_LENGTH,
   NOTES_MAX_LENGTH,
   REGISTRY_NOTES_MAX_LENGTH,
   EMAIL_MAX_LENGTH,
+  SHARE_PASSWORD_MIN_LENGTH,
+  SHARE_PASSWORD_MAX_LENGTH,
   QUANTITY_MAX,
   GIFT_COUNT_MAX,
+  INVITE_COUNT_MAX,
 } from "@/lib/field-limits";
 
 type Db = ReturnType<typeof getDb>;
@@ -24,6 +33,8 @@ type Db = ReturnType<typeof getDb>;
 // Owner or accepted co-owner — the two have equal management rights over
 // gifts and registry details (see docs/stories/invite-co-owner.md).
 async function requireRegistryAccess(db: Db, registryId: string, userId: string) {
+  if (!isUuid(registryId)) throw new Error("Registry not found.");
+
   const [registry] = await db
     .select()
     .from(registries)
@@ -40,6 +51,8 @@ async function requireRegistryAccess(db: Db, registryId: string, userId: string)
 // the person who created the registry, not any co-owner (deliberate: a
 // co-owner shouldn't be able to remove the original owner or each other).
 async function requirePrimaryOwner(db: Db, registryId: string, userId: string) {
+  if (!isUuid(registryId)) throw new Error("Registry not found.");
+
   const [registry] = await db
     .select()
     .from(registries)
@@ -52,27 +65,33 @@ async function requirePrimaryOwner(db: Db, registryId: string, userId: string) {
   return registry;
 }
 
-export async function addGift(registryId: string, formData: FormData) {
+export async function addGift(
+  registryId: string,
+  formData: FormData,
+): Promise<ActionResult> {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
   const db = getDb();
   await requireRegistryAccess(db, registryId, userId);
 
-  const name = formData.get("name") as string;
-  const notes = formData.get("notes") as string;
+  const name = (formData.get("name") as string | null) ?? "";
+  const notes = (formData.get("notes") as string | null) ?? "";
   const quantity = Number.parseInt(formData.get("quantity") as string, 10);
-  assertMaxLength(name, GIFT_NAME_MAX_LENGTH, "Gift name");
-  assertMaxLength(notes ?? "", NOTES_MAX_LENGTH, "Notes");
+  if (!name.trim()) return { error: "Give the gift a name." };
+  const lengthError =
+    maxLengthError(name, GIFT_NAME_MAX_LENGTH, "Gift name") ??
+    maxLengthError(notes, NOTES_MAX_LENGTH, "Notes");
+  if (lengthError) return { error: lengthError };
 
-  const existingGifts = await db
-    .select({ id: gifts.id })
+  const [{ giftCount }] = await db
+    .select({ giftCount: count() })
     .from(gifts)
     .where(eq(gifts.registryId, registryId));
-  if (existingGifts.length >= GIFT_COUNT_MAX) {
-    throw new Error(
-      `This registry already has the maximum of ${GIFT_COUNT_MAX} gifts.`,
-    );
+  if (giftCount >= GIFT_COUNT_MAX) {
+    return {
+      error: `This registry already has the maximum of ${GIFT_COUNT_MAX} gifts.`,
+    };
   }
 
   await db.insert(gifts).values({
@@ -86,20 +105,30 @@ export async function addGift(registryId: string, formData: FormData) {
   });
 
   revalidatePath(`/registries/${registryId}`);
+  return null;
 }
 
-export async function updateRegistry(registryId: string, formData: FormData) {
+export async function updateRegistry(
+  registryId: string,
+  formData: FormData,
+): Promise<ActionResult> {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
   const db = getDb();
   await requireRegistryAccess(db, registryId, userId);
 
-  const title = formData.get("title") as string;
-  const eventDate = formData.get("eventDate") as string;
-  const notes = formData.get("notes") as string;
-  assertMaxLength(title, TITLE_MAX_LENGTH, "Registry title");
-  assertMaxLength(notes ?? "", REGISTRY_NOTES_MAX_LENGTH, "Notes");
+  const title = (formData.get("title") as string | null) ?? "";
+  const eventDate = (formData.get("eventDate") as string | null) ?? "";
+  const notes = (formData.get("notes") as string | null) ?? "";
+  if (!title.trim()) return { error: "Give the registry a title." };
+  const lengthError =
+    maxLengthError(title, TITLE_MAX_LENGTH, "Registry title") ??
+    maxLengthError(notes, REGISTRY_NOTES_MAX_LENGTH, "Notes");
+  if (lengthError) return { error: lengthError };
+  if (eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+    return { error: "That doesn't look like a valid event date." };
+  }
 
   await db
     .update(registries)
@@ -108,24 +137,29 @@ export async function updateRegistry(registryId: string, formData: FormData) {
 
   revalidatePath(`/registries/${registryId}`);
   revalidatePath("/registries");
+  return null;
 }
 
 export async function updateGift(
   registryId: string,
   giftId: string,
   formData: FormData,
-) {
+): Promise<ActionResult> {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
   const db = getDb();
   await requireRegistryAccess(db, registryId, userId);
+  if (!isUuid(giftId)) return { error: "This gift is no longer on the registry." };
 
-  const name = formData.get("name") as string;
-  const notes = formData.get("notes") as string;
+  const name = (formData.get("name") as string | null) ?? "";
+  const notes = (formData.get("notes") as string | null) ?? "";
   const quantity = Number.parseInt(formData.get("quantity") as string, 10);
-  assertMaxLength(name, GIFT_NAME_MAX_LENGTH, "Gift name");
-  assertMaxLength(notes ?? "", NOTES_MAX_LENGTH, "Notes");
+  if (!name.trim()) return { error: "Give the gift a name." };
+  const lengthError =
+    maxLengthError(name, GIFT_NAME_MAX_LENGTH, "Gift name") ??
+    maxLengthError(notes, NOTES_MAX_LENGTH, "Notes");
+  if (lengthError) return { error: lengthError };
 
   await db
     .update(gifts)
@@ -140,6 +174,7 @@ export async function updateGift(
     .where(and(eq(gifts.id, giftId), eq(gifts.registryId, registryId)));
 
   revalidatePath(`/registries/${registryId}`);
+  return null;
 }
 
 export async function deleteGift(registryId: string, giftId: string) {
@@ -148,6 +183,7 @@ export async function deleteGift(registryId: string, giftId: string) {
 
   const db = getDb();
   await requireRegistryAccess(db, registryId, userId);
+  if (!isUuid(giftId)) return;
 
   await db
     .delete(gifts)
@@ -205,7 +241,64 @@ export async function regenerateShareLink(registryId: string) {
   revalidatePath(`/registries/${registryId}`);
 }
 
-export type InviteResult = { ok: true } | { error: string } | null;
+// Sets or replaces the share-page password. Replacing also invalidates
+// every guest's existing unlock cookie — the cookie is HMAC-keyed by the
+// stored ciphertext, which changes on every set (see
+// src/lib/share-password.ts).
+export async function setSharePassword(
+  registryId: string,
+  _prevState: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const db = getDb();
+  await requireRegistryAccess(db, registryId, userId);
+
+  if (!sharePasswordKeyConfigured()) {
+    return {
+      error:
+        "Share passwords aren't available right now — the server is missing its SHARE_PASSWORD_KEY.",
+    };
+  }
+
+  const password = (formData.get("password") as string | null) ?? "";
+  if (password.length < SHARE_PASSWORD_MIN_LENGTH) {
+    return {
+      error: `The password needs at least ${SHARE_PASSWORD_MIN_LENGTH} characters.`,
+    };
+  }
+  const lengthError = maxLengthError(
+    password,
+    SHARE_PASSWORD_MAX_LENGTH,
+    "Password",
+  );
+  if (lengthError) return { error: lengthError };
+
+  await db
+    .update(registries)
+    .set({ sharePasswordEncrypted: encryptSharePassword(password) })
+    .where(eq(registries.id, registryId));
+
+  revalidatePath(`/registries/${registryId}`);
+  return { ok: true };
+}
+
+export async function removeSharePassword(registryId: string) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const db = getDb();
+  await requireRegistryAccess(db, registryId, userId);
+
+  await db
+    .update(registries)
+    .set({ sharePasswordEncrypted: null })
+    .where(eq(registries.id, registryId));
+
+  revalidatePath(`/registries/${registryId}`);
+}
 
 // Any owner or co-owner can invite further co-owners — full parity, not
 // just the original owner (see docs/stories/invite-co-owner.md). Signature
@@ -213,9 +306,9 @@ export type InviteResult = { ok: true } | { error: string } | null;
 // confirm success and surface a bad email inline instead of throwing.
 export async function inviteCoOwner(
   registryId: string,
-  _prevState: InviteResult,
+  _prevState: ActionResult,
   formData: FormData,
-): Promise<InviteResult> {
+): Promise<ActionResult> {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
@@ -234,18 +327,44 @@ export async function inviteCoOwner(
       and(
         eq(registryInvitations.registryId, registryId),
         eq(registryInvitations.email, email),
-        eq(registryInvitations.status, "pending"),
+        or(
+          eq(registryInvitations.status, "pending"),
+          eq(registryInvitations.status, "accepted"),
+        ),
       ),
     );
 
-  // An already-pending invitation counts as success — it's idempotent, and
-  // the pending list on the page shows the state either way.
+  // An already-pending (or already-accepted) invitation counts as success —
+  // it's idempotent, and the lists on the page show the state either way.
   if (!existing) {
-    await db.insert(registryInvitations).values({
-      registryId,
-      email,
-      invitedByUserId: userId,
-    });
+    const [{ activeCount }] = await db
+      .select({ activeCount: count() })
+      .from(registryInvitations)
+      .where(
+        and(
+          eq(registryInvitations.registryId, registryId),
+          or(
+            eq(registryInvitations.status, "pending"),
+            eq(registryInvitations.status, "accepted"),
+          ),
+        ),
+      );
+    if (activeCount >= INVITE_COUNT_MAX) {
+      return {
+        error: `A registry can have at most ${INVITE_COUNT_MAX} co-owners and pending invitations.`,
+      };
+    }
+
+    // The partial unique index on (registry_id, email) backs up the check
+    // above; a double-submit race lands here and is safely a no-op.
+    await db
+      .insert(registryInvitations)
+      .values({
+        registryId,
+        email,
+        invitedByUserId: userId,
+      })
+      .onConflictDoNothing();
   }
 
   revalidatePath(`/registries/${registryId}`);
@@ -258,6 +377,7 @@ export async function cancelInvitation(registryId: string, invitationId: string)
 
   const db = getDb();
   await requireRegistryAccess(db, registryId, userId);
+  if (!isUuid(invitationId)) return;
 
   await db
     .delete(registryInvitations)
@@ -299,6 +419,7 @@ export async function removeCoOwner(registryId: string, invitationId: string) {
 
   const db = getDb();
   await requirePrimaryOwner(db, registryId, userId);
+  if (!isUuid(invitationId)) return;
 
   await db
     .delete(registryInvitations)

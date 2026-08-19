@@ -72,7 +72,10 @@ Given(
 
 When("I invite {string} as a co-owner", async ({ page }, email: string) => {
   await page.getByLabel("Invite a co-owner").fill(email);
-  await page.getByRole("button", { name: "Invite" }).click();
+  // exact is load-bearing: getByRole matches accessible names by substring,
+  // so a bare "Invite" also matches every "Cancel invitation to …" button
+  // once the pending list has entries.
+  await page.getByRole("button", { name: "Invite", exact: true }).click();
 });
 
 Then(

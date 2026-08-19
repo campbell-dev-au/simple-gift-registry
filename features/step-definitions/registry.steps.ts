@@ -5,6 +5,7 @@ import { createTestAccount, deleteTestAccount } from "./clerk-test-account";
 import {
   createTestRegistry,
   deleteTestRegistry,
+  deleteTestRegistriesByOwner,
   archiveTestRegistry,
 } from "./registry-test-data";
 
@@ -15,6 +16,12 @@ Before("@registry", async ({ account }) => {
 });
 
 After("@registry", async ({ account, otherAccount, registry, otherRegistry }) => {
+  // Owner-based sweep first: some scenarios seed registries in bulk (the
+  // registry-limit one) or create them through the UI without capturing an
+  // id, and the per-id deletes below can't know about those.
+  if (account.userId) {
+    await deleteTestRegistriesByOwner(account.userId);
+  }
   await deleteTestAccount(account);
   if (otherAccount.userId) {
     await deleteTestAccount(otherAccount);

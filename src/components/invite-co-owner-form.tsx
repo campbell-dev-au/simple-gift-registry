@@ -1,10 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import {
-  inviteCoOwner,
-  type InviteResult,
-} from "@/app/registries/[id]/actions";
+import { inviteCoOwner } from "@/app/registries/[id]/actions";
+import type { ActionResult } from "@/lib/action-result";
 import { SubmitButton } from "@/components/submit-button";
 import { inputClass, labelClass } from "@/components/field";
 import { EMAIL_MAX_LENGTH } from "@/lib/field-limits";
@@ -14,7 +12,7 @@ import { EMAIL_MAX_LENGTH } from "@/lib/field-limits";
 // happens next (no email is sent — the invitee sees the invitation on
 // their registries page once signed in with that address).
 export function InviteCoOwnerForm({ registryId }: { registryId: string }) {
-  const [state, formAction] = useActionState<InviteResult, FormData>(
+  const [state, formAction] = useActionState<ActionResult, FormData>(
     inviteCoOwner.bind(null, registryId),
     null,
   );

@@ -38,9 +38,15 @@ export function GiftCard({
   pending?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSave(formData: FormData) {
-    await updateGift(registryId, gift.id, formData);
+    setError(null);
+    const result = await updateGift(registryId, gift.id, formData);
+    if (result && "error" in result) {
+      setError(result.error);
+      return;
+    }
     setIsEditing(false);
   }
 
@@ -106,6 +112,11 @@ export function GiftCard({
               Cancel
             </button>
           </div>
+          {error && (
+            <p className="text-sm text-amber" role="status">
+              {error}
+            </p>
+          )}
         </form>
       </li>
     );

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SignOutButton } from "@/app/sign-out-button";
 import { AccountForm } from "@/components/account-form";
+import { AccountDangerZone } from "@/components/account-danger-zone";
 
 export default async function AccountPage() {
   const { userId } = await auth();
@@ -24,6 +25,8 @@ export default async function AccountPage() {
       <div className="border-t border-line pt-4">
         <SignOutButton />
       </div>
+
+      <AccountDangerZone />
     </main>
   );
 }

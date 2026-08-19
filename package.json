@@ -10,7 +10,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "knip": "knip",
     "test:bdd": "bddgen && playwright test",
-    "test:bdd:app": "bddgen && playwright test .features-gen/features/homepage .features-gen/features/registry",
+    "test:bdd:app": "bddgen && playwright test .features-gen/features/homepage .features-gen/features/registry .features-gen/features/account/delete_account.feature.spec.js",
     "test:bdd:account": "bddgen && playwright test .features-gen/features/account",
     "test:bdd:ui": "bddgen && playwright test --ui",
     "test:bdd:report": "playwright show-report",
@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.7.6",
+    "@sentry/nextjs": "^10.70.0",
     "@vercel/functions": "^3.9.3",
     "drizzle-orm": "^0.45.2",
     "next": "16.3.1",

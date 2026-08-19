@@ -23,6 +23,9 @@ export default defineConfig({
     baseURL: "http://localhost:3100",
     trace: "on-first-retry",
     actionTimeout: 10_000,
+    // For the copy-share-password scenario: lets the app's clipboard write
+    // succeed headlessly and the test read it back to assert the value.
+    permissions: ["clipboard-read", "clipboard-write"],
   },
   projects: [
     {

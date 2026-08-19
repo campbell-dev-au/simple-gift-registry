@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { eq, and, inArray } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
@@ -7,7 +8,18 @@ import { registries, gifts, giftClaims, registrySaves } from "@/db/schema";
 import { saveRegistry, unsaveRegistry } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { ShareGifts } from "@/components/share-gifts";
+import { SharePasswordGate } from "@/components/share-password-gate";
 import { formatEventDate } from "@/lib/format-date";
+import { canManageRegistry } from "@/lib/registry-access";
+import { hasShareAccess } from "@/lib/share-password";
+import { isUuid } from "@/lib/validation";
+
+// Share links get posted in group chats and social feeds; a registry (gift
+// list, owner's notes) should never end up in a search index because of
+// that. next.config.ts additionally sends X-Robots-Tag for /share/.
+export const metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function SharePage({
   params,
@@ -16,8 +28,7 @@ export default async function SharePage({
 }) {
   const { token } = await params;
 
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token);
-  if (!isUuid) notFound();
+  if (!isUuid(token)) notFound();
 
   const { userId } = await auth();
 
@@ -30,6 +41,21 @@ export default async function SharePage({
   if (!registry) notFound();
 
   const isOwner = userId === registry.ownerId;
+
+  // Password gate. Owners and co-owners skip it — they already proved a
+  // stronger identity than the password — and the server actions behind
+  // this page re-check the same unlock cookie (see requireShareUnlock in
+  // ./actions.ts), so the gate is presentation, not the enforcement.
+  if (registry.sharePasswordEncrypted) {
+    const cookieStore = await cookies();
+    const unlocked =
+      hasShareAccess(registry, cookieStore) ||
+      isOwner ||
+      (await canManageRegistry(db, registry.ownerId, registry.id, userId ?? null));
+    if (!unlocked) {
+      return <SharePasswordGate token={token} title={registry.title} />;
+    }
+  }
 
   if (registry.archivedAt) {
     return (
