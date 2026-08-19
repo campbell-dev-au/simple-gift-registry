@@ -3,6 +3,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+
 import { eq, and, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
@@ -61,10 +62,15 @@ export async function deleteAllAccountData(): Promise<ActionResult> {
 
 // Full deletion: the data wipe above, then the Clerk account itself. The
 // wipe runs first so a failure deleting the Clerk user can't leave data
-// behind with no account able to reach it. Clerk invalidates the session
-// when the user is deleted; the redirect lands them on the homepage
-// signed out.
-export async function deleteAccount() {
+// behind with no account able to reach it.
+//
+// Returns instead of redirecting: deleting the Clerk user revokes the
+// session server-side, but the browser's short-lived session JWT stays
+// verifiable until it expires (~a minute), so a redirect here would land
+// on a homepage that still renders signed-in. The client reacts to the
+// ok by running Clerk's signOut, which clears the local session at the
+// same moment (see AccountDangerZone).
+export async function deleteAccount(): Promise<ActionResult> {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
@@ -73,5 +79,5 @@ export async function deleteAccount() {
   const client = await clerkClient();
   await client.users.deleteUser(userId);
 
-  redirect("/");
+  return { ok: true };
 }

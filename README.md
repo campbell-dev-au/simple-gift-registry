@@ -55,15 +55,15 @@ Scenarios are compiled into real Playwright tests and run in a browser, so they 
 
 ```bash
 npm run test:bdd         # generate tests from .feature files and run everything
-npm run test:bdd:app     # homepage + registry scenarios only
-npm run test:bdd:account # account scenarios only (sign-up, sign-in, sign-out)
+npm run test:bdd:app     # homepage + registry + account-deletion scenarios
+npm run test:bdd:account # account scenarios only (sign-up, sign-in, sign-out, deletion)
 npm run test:bdd:ui      # interactive UI runner (all scenarios)
 npm run test:bdd:report  # open the HTML report from the last run
 ```
 
 `test:bdd` and friends start their own `next dev` instance on port 3100 (kept separate from your normal dev server on 3000) and tear it down after the run.
 
-**Prefer `test:bdd:app` while iterating on product features.** `features/account/` exercises Clerk's actual sign-up/sign-in UI end to end (real password + email-code round trips, the device-trust step) — each run is several real calls against Clerk's dev-instance Frontend and Backend APIs, which has its own rate limits. `features/registry/` scenarios still need a signed-in user, but arrange that the cheap way (a Backend API–created account + `clerk.signIn()`'s bypass, skipping the UI flow entirely — see `docs/stories/sign-in.md`), so `test:bdd:app` is both faster and much lighter on Clerk's quota. Run `test:bdd:account` deliberately when you're actually working on auth, and reach for full `test:bdd` before pushing or when you want complete coverage.
+**Prefer `test:bdd:app` while iterating on product features.** `features/account/` exercises Clerk's actual sign-up/sign-in UI end to end (real password + email-code round trips, the device-trust step) — each run is several real calls against Clerk's dev-instance Frontend and Backend APIs, which has its own rate limits. `features/registry/` scenarios still need a signed-in user, but arrange that the cheap way (a Backend API–created account + `clerk.signIn()`'s bypass, skipping the UI flow entirely — see `docs/stories/sign-in.md`), so `test:bdd:app` is both faster and much lighter on Clerk's quota. (`delete_account.feature` is the exception: it arranges sign-in the cheap way too, so `test:bdd:app` includes it.) Run `test:bdd:account` deliberately when you're actually working on auth, and reach for full `test:bdd` before pushing or when you want complete coverage.
 
 ### Adding a new feature
 

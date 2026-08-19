@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useClerk } from "@clerk/nextjs";
 import {
   deleteAllAccountData,
   deleteAccount,
@@ -10,13 +11,37 @@ import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { sectionTitleClass } from "@/components/field";
 
 // The two irreversible account actions, each behind an explicit browser
-// confirmation. Deleting the account redirects home from the action, so
-// only the data-wipe needs a visible result here.
+// confirmation.
 export function AccountDangerZone() {
+  const { signOut } = useClerk();
+
   const [wipeState, wipeAction] = useActionState<ActionResult, FormData>(
     deleteAllAccountData,
     null,
   );
+
+  // Once the server confirms the account is gone, clear the browser's Clerk
+  // session too — the server-side revocation alone leaves the short-lived
+  // session JWT looking valid for up to a minute (see deleteAccount in
+  // src/app/account/actions.ts). Against an already-deleted session
+  // signOut can reject or never settle, so it's raced against a timeout
+  // and the navigation home happens unconditionally.
+  const [, deleteAction] = useActionState<ActionResult, FormData>(async () => {
+    const result = await deleteAccount();
+    if (result && "error" in result) return result;
+    try {
+      await Promise.race([
+        signOut(),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]);
+    } catch {
+      // Session already unusable — exactly the state signOut was for.
+    }
+    // A full-page navigation on purpose (not router.push): everything must
+    // re-render with no session, with no client-side cache surviving.
+    window.location.assign(window.location.origin);
+    return null;
+  }, null);
 
   return (
     <div className="flex flex-col gap-4 border-t border-line pt-4">
@@ -49,7 +74,7 @@ export function AccountDangerZone() {
         )}
       </form>
 
-      <form action={deleteAccount} className="flex flex-col gap-2">
+      <form action={deleteAction} className="flex flex-col gap-2">
         <p className="text-sm text-ink-dim">
           Or delete your account entirely — all of the above, plus the
           account itself and its sign-in.

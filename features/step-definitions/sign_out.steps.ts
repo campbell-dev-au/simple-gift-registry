@@ -31,5 +31,9 @@ When("I choose to sign out", async ({ page }) => {
 
 Then("I am signed out", async ({ page }) => {
   await expect(page).toHaveURL("/");
-  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+  // Scoped to the header: the signed-out homepage also has a "Sign in"
+  // link in the hero, and an unscoped query trips strict mode on the pair.
+  await expect(
+    page.getByRole("banner").getByRole("link", { name: "Sign in" }),
+  ).toBeVisible();
 });
