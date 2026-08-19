@@ -19,6 +19,7 @@ export function SubmitButton({
   size = "md",
   className = "",
   children,
+  disabled,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -29,7 +30,7 @@ export function SubmitButton({
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       aria-busy={pending}
       className={`${buttonClasses(variant, size)} ${className}`}
       {...props}
