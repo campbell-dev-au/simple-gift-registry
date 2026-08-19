@@ -24,6 +24,9 @@ export async function SiteHeader() {
             <IconGift className="h-4 w-4" />
           </span>
           Simple Gift Registry
+          <span className="rounded-full bg-amber/10 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-amber uppercase">
+            Beta
+          </span>
         </Link>
 
         {userId ? (
