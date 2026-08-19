@@ -8,7 +8,7 @@ export function SiteFooter() {
           href="https://buymeacoffee.com/campbelldavis"
           target="_blank"
           rel="noopener noreferrer"
-          className="absolute right-6 top-0 -translate-y-1/2 rounded bg-canvas px-2 text-xs text-ink-dim hover:text-ink hover:underline"
+          className="absolute right-6 top-0 -translate-y-1/2 rounded bg-canvas px-2 text-xs font-light text-ink-dim hover:text-ink hover:underline"
         >
           Buy me a coffee
         </a>
