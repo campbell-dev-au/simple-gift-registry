@@ -271,19 +271,6 @@ export default async function RegistriesPage() {
           </ul>
         </section>
       )}
-
-      <p className="text-center text-xs text-ink-dim">
-        Enjoying Simple Gift Registry?{" "}
-        <a
-          href="https://buymeacoffee.com/campbelldavis"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-ink hover:underline"
-        >
-          Buy me a coffee
-        </a>{" "}
-        to help cover running costs.
-      </p>
     </main>
   );
 }

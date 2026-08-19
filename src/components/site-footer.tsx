@@ -29,6 +29,14 @@ export function SiteFooter() {
           <Link href="/terms" className="hover:text-ink hover:underline">
             Terms
           </Link>
+          <a
+            href="https://buymeacoffee.com/campbelldavis"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-ink hover:underline"
+          >
+            Buy me a coffee
+          </a>
         </nav>
       </div>
     </footer>
