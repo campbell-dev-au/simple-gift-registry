@@ -33,6 +33,15 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+      # The runner's default apt mirror, azure.archive.ubuntu.com, goes
+      # unresponsive often enough to blow the fail-fast timeouts on the two
+      # apt-touching steps below — apt retries it for minutes per index file
+      # before falling back to the canonical archive (observed 2026-08-19,
+      # three runs in a row). Pointing the mirror list straight at the
+      # canonical archive skips those retries; the duplicate entry this
+      # leaves behind is harmless.
+      - name: Pin apt to the canonical Ubuntu mirror
+        run: sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu/|https://archive.ubuntu.com/ubuntu/|' /etc/apt/apt-mirrors.txt
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
