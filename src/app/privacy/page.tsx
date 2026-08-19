@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "How Simple Gift Registry collects, uses, and shares your information.",
 };
 
-const CONTACT_EMAIL = "campbell.davis90@gmail.com";
+const CONTACT_EMAIL = "support@simplegiftregistry.com.au";
 
 export default function PrivacyPolicyPage() {
   return (

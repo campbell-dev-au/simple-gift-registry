@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "The terms that apply when you use Simple Gift Registry.",
 };
 
-const CONTACT_EMAIL = "campbell.davis90@gmail.com";
+const CONTACT_EMAIL = "support@simplegiftregistry.com.au";
 
 export default function TermsPage() {
   return (
@@ -112,7 +112,10 @@ export default function TermsPage() {
       </LegalSection>
 
       <LegalSection title="Governing law">
-        <p>These terms are governed by the laws of Australia.</p>
+        <p>
+          These terms are governed by the laws of South Australia, Australia,
+          and any disputes are subject to the courts of South Australia.
+        </p>
       </LegalSection>
 
       <LegalSection title="Contact">
