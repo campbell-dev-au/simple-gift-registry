@@ -4,4 +4,10 @@
 // confirm success; `null` means "done, nothing to say" — the pattern the
 // Next error-handling guide recommends over throwing, since thrown errors
 // are masked in production and only reach the generic error boundary.
-export type ActionResult = { ok: true } | { error: string } | null;
+// `emailed` qualifies an ok: whether the action queued a notification
+// email (false when email isn't configured, or when an idempotent
+// re-submit sent nothing new) so the form doesn't overclaim.
+export type ActionResult =
+  | { ok: true; emailed?: boolean }
+  | { error: string }
+  | null;
