@@ -8,7 +8,10 @@ import { eq, and, or, count } from "drizzle-orm";
 import { getDb } from "@/db";
 import { registries, gifts, registryInvitations } from "@/db/schema";
 import { canManageRegistry } from "@/lib/registry-access";
-import { hashSharePassword } from "@/lib/share-password";
+import {
+  encryptSharePassword,
+  sharePasswordKeyConfigured,
+} from "@/lib/share-password";
 import { isUuid } from "@/lib/validation";
 import type { ActionResult } from "@/lib/action-result";
 import {
@@ -240,7 +243,8 @@ export async function regenerateShareLink(registryId: string) {
 
 // Sets or replaces the share-page password. Replacing also invalidates
 // every guest's existing unlock cookie — the cookie is HMAC-keyed by the
-// stored hash (see src/lib/share-password.ts).
+// stored ciphertext, which changes on every set (see
+// src/lib/share-password.ts).
 export async function setSharePassword(
   registryId: string,
   _prevState: ActionResult,
@@ -251,6 +255,13 @@ export async function setSharePassword(
 
   const db = getDb();
   await requireRegistryAccess(db, registryId, userId);
+
+  if (!sharePasswordKeyConfigured()) {
+    return {
+      error:
+        "Share passwords aren't available right now — the server is missing its SHARE_PASSWORD_KEY.",
+    };
+  }
 
   const password = (formData.get("password") as string | null) ?? "";
   if (password.length < SHARE_PASSWORD_MIN_LENGTH) {
@@ -267,7 +278,7 @@ export async function setSharePassword(
 
   await db
     .update(registries)
-    .set({ sharePasswordHash: hashSharePassword(password) })
+    .set({ sharePasswordEncrypted: encryptSharePassword(password) })
     .where(eq(registries.id, registryId));
 
   revalidatePath(`/registries/${registryId}`);
@@ -283,7 +294,7 @@ export async function removeSharePassword(registryId: string) {
 
   await db
     .update(registries)
-    .set({ sharePasswordHash: null })
+    .set({ sharePasswordEncrypted: null })
     .where(eq(registries.id, registryId));
 
   revalidatePath(`/registries/${registryId}`);

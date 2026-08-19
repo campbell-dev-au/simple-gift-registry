@@ -8,7 +8,7 @@ import {
   registryInvitations,
   registrySaves,
 } from "../../src/db/schema";
-import { hashSharePassword } from "../../src/lib/share-password";
+import { encryptSharePassword } from "../../src/lib/share-password";
 
 // A plain pg.Pool over the app's schema — deliberately not the app's
 // getDb() — test setup/teardown shouldn't depend on the app's
@@ -51,15 +51,15 @@ export async function createManyTestRegistries(ownerId: string, count: number) {
     );
 }
 
-// Applies the same hash the app writes (see setSharePassword) so gate
-// scenarios exercise the real verify path, not a test-only shortcut.
+// Applies the same encryption the app writes (see setSharePassword) so
+// gate scenarios exercise the real verify path, not a test-only shortcut.
 export async function setTestRegistryPassword(
   registryId: string,
   password: string,
 ) {
   await db
     .update(registries)
-    .set({ sharePasswordHash: hashSharePassword(password) })
+    .set({ sharePasswordEncrypted: encryptSharePassword(password) })
     .where(eq(registries.id, registryId));
 }
 

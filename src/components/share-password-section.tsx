@@ -15,19 +15,27 @@ import {
   SHARE_PASSWORD_MAX_LENGTH,
 } from "@/lib/field-limits";
 
-// Manage-page controls for the share-page password: set one, change it, or
+// Manage-page controls for the share-page password: set one, view it
+// password-manager style (hidden until Show, copyable), change it, or
 // remove it. Setting or changing signs every guest out of the registry
-// (their unlock cookies die with the old hash — see
+// (their unlock cookies die with the old ciphertext — see
 // src/lib/share-password.ts), which is exactly what an owner reaching for
 // this wants.
 export function SharePasswordSection({
   registryId,
   hasPassword,
+  // Null while hasPassword when the stored value can't be decrypted (e.g.
+  // a rotated SHARE_PASSWORD_KEY) — the reveal row hides and the owner can
+  // still change or remove the password.
+  sharePassword,
 }: {
   registryId: string;
   hasPassword: boolean;
+  sharePassword: string | null;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [state, formAction] = useActionState<ActionResult, FormData>(
     setSharePassword.bind(null, registryId),
     null,
@@ -40,6 +48,13 @@ export function SharePasswordSection({
   if (state !== handledState) {
     setHandledState(state);
     if (state && "ok" in state) setIsEditing(false);
+  }
+
+  async function copyPassword() {
+    if (!sharePassword) return;
+    await navigator.clipboard.writeText(sharePassword);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   const showForm = isEditing || !hasPassword;
@@ -56,6 +71,37 @@ export function SharePasswordSection({
           Optionally require a password before guests can open the share
           link — for registries you&apos;d rather not have one forward away.
         </p>
+      )}
+
+      {hasPassword && !isEditing && sharePassword !== null && (
+        <div className="flex items-center gap-2">
+          <input
+            readOnly
+            type={revealed ? "text" : "password"}
+            value={sharePassword}
+            aria-label="Share password"
+            className={`${inputClass} font-mono text-sm`}
+          />
+          {/* aria-labels double as disambiguation from the share link's own
+              Copy button just above this section. */}
+          <button
+            type="button"
+            aria-label={revealed ? "Hide share password" : "Show share password"}
+            className={buttonClasses("ghost", "sm")}
+            onClick={() => setRevealed((current) => !current)}
+          >
+            {revealed ? "Hide" : "Show"}
+          </button>
+          <button
+            type="button"
+            aria-label="Copy share password"
+            aria-live="polite"
+            className={buttonClasses("ghost", "sm")}
+            onClick={copyPassword}
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
       )}
 
       {showForm ? (

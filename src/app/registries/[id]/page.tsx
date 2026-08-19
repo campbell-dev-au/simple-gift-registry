@@ -5,6 +5,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getDb } from "@/db";
 import { registries, gifts, giftClaims, registryInvitations } from "@/db/schema";
 import { canManageRegistry } from "@/lib/registry-access";
+import { decryptSharePassword } from "@/lib/share-password";
 import { isUuid } from "@/lib/validation";
 import { SubmitButton } from "@/components/submit-button";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
@@ -245,9 +246,17 @@ export default async function RegistryPage({
                 </ConfirmSubmitButton>
               </form>
               <div className="border-t border-line pt-3">
+                {/* Decrypted server-side for the owner's show/copy controls —
+                    this whole branch only renders for owners/co-owners, the
+                    same trust boundary that could set the password. */}
                 <SharePasswordSection
                   registryId={registry.id}
-                  hasPassword={!!registry.sharePasswordHash}
+                  hasPassword={!!registry.sharePasswordEncrypted}
+                  sharePassword={
+                    registry.sharePasswordEncrypted
+                      ? decryptSharePassword(registry.sharePasswordEncrypted)
+                      : null
+                  }
                 />
               </div>
             </section>

@@ -26,6 +26,48 @@ Then("I see that guests now need a password", async ({ page }) => {
   ).toBeVisible();
 });
 
+Then("the share password is hidden", async ({ page }) => {
+  // getByRole rather than getByLabel: the Show/Copy buttons' aria-labels
+  // also contain "share password" and getByLabel matches by substring.
+  // type=password is what actually masks the value — the reveal toggle
+  // flips it to text.
+  await expect(
+    page.getByRole("textbox", { name: "Share password" }),
+  ).toHaveAttribute("type", "password");
+});
+
+When("I choose to show the share password", async ({ page }) => {
+  await page.getByRole("button", { name: "Show share password" }).click();
+});
+
+Then(
+  "I see the share password {string}",
+  async ({ page }, password: string) => {
+    const field = page.getByRole("textbox", { name: "Share password" });
+    await expect(field).toHaveAttribute("type", "text");
+    await expect(field).toHaveValue(password);
+  },
+);
+
+When("I copy the share password", async ({ page }) => {
+  const copyButton = page.getByRole("button", { name: "Copy share password" });
+  await copyButton.click();
+  // The visible text flips once the clipboard write resolves (the
+  // accessible name stays "Copy share password" via aria-label).
+  await expect(copyButton).toHaveText("Copied!");
+});
+
+Then(
+  "the share password {string} is on my clipboard",
+  async ({ page }, password: string) => {
+    // Needs the clipboard-read permission granted in playwright.config.ts.
+    const clipboard = await page.evaluate(() =>
+      navigator.clipboard.readText(),
+    );
+    expect(clipboard).toBe(password);
+  },
+);
+
 Then("I am asked for the registry password", async ({ page }) => {
   await expect(
     page.getByText("This registry is password protected"),

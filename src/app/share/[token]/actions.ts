@@ -41,7 +41,7 @@ async function requireRegistryByShareToken(
 // with the token but without the password gets nowhere.
 async function requireShareUnlock(registry: {
   id: string;
-  sharePasswordHash: string | null;
+  sharePasswordEncrypted: string | null;
 }) {
   const cookieStore = await cookies();
   if (!hasShareAccess(registry, cookieStore)) {
@@ -58,21 +58,24 @@ export async function unlockShareRegistry(
 ): Promise<ActionResult> {
   const db = getDb();
   const registry = await requireRegistryByShareToken(db, token);
-  if (!registry.sharePasswordHash) return null;
+  if (!registry.sharePasswordEncrypted) return null;
 
   const password = (formData.get("password") as string | null) ?? "";
   if (
     !password ||
     password.length > SHARE_PASSWORD_MAX_LENGTH ||
-    !verifySharePassword(password, registry.sharePasswordHash)
+    !verifySharePassword(password, registry.sharePasswordEncrypted)
   ) {
+    // Verification itself is a cheap decrypt-and-compare, so this delay is
+    // the only per-attempt cost an online guesser pays.
+    await new Promise((resolve) => setTimeout(resolve, 500));
     return { error: "That password isn't right — check with whoever sent you the link." };
   }
 
   const cookieStore = await cookies();
   cookieStore.set(
     shareAccessCookieName(registry.id),
-    shareAccessCookieValue(registry.id, registry.sharePasswordHash),
+    shareAccessCookieValue(registry.id, registry.sharePasswordEncrypted),
     {
       httpOnly: true,
       sameSite: "lax",

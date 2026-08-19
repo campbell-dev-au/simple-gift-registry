@@ -32,12 +32,14 @@ export const registries = pgTable("registries", {
   // opt-in to go through a confirmation step. Guests always see remaining
   // counts via /share/[token]; this only gates the owner-facing view.
   revealClaims: boolean("reveal_claims").notNull().default(false),
-  // Optional password gate for the share page, stored as `salt:hash` from
-  // scrypt (see src/lib/share-password.ts). Null means the share link alone
-  // is enough. The unlock cookie is HMAC-keyed by this exact value, so
-  // changing or clearing the password invalidates every guest's unlock
+  // Optional password gate for the share page, stored AES-256-GCM
+  // encrypted (see src/lib/share-password.ts) — encrypted rather than
+  // hashed so the owner can re-view and copy it from the manage page. Null
+  // means the share link alone is enough. The unlock cookie is HMAC-keyed
+  // by this exact value, and the random IV makes it differ on every set,
+  // so changing or clearing the password invalidates every guest's unlock
   // cookie at once.
-  sharePasswordHash: text("share_password_hash"),
+  sharePasswordEncrypted: text("share_password_encrypted"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

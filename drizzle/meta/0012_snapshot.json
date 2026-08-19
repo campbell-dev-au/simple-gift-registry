@@ -1,5 +1,5 @@
 {
-  "id": "7a429b1a-675b-4032-aec7-009a06b7f886",
+  "id": "ab96bd82-e0de-49d6-974b-9c066a3c2a0c",
   "prevId": "ef444582-17a1-449d-9190-c07457ef1f29",
   "version": "7",
   "dialect": "postgresql",
@@ -184,8 +184,8 @@
           "notNull": true,
           "default": false
         },
-        "share_password_hash": {
-          "name": "share_password_hash",
+        "share_password_encrypted": {
+          "name": "share_password_encrypted",
           "type": "text",
           "primaryKey": false,
           "notNull": false

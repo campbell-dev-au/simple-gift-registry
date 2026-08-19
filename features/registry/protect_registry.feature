@@ -12,6 +12,25 @@ Feature: Protect a registry with a password
     Then I see that guests now need a password
 
   @registry
+  Scenario: Owner reveals the share password
+    Given I am already signed in
+    And I have created a gift registry
+    And the registry is protected with the password "tulips2026"
+    When I view the registry
+    Then the share password is hidden
+    When I choose to show the share password
+    Then I see the share password "tulips2026"
+
+  @registry
+  Scenario: Owner copies the share password
+    Given I am already signed in
+    And I have created a gift registry
+    And the registry is protected with the password "tulips2026"
+    When I view the registry
+    And I copy the share password
+    Then the share password "tulips2026" is on my clipboard
+
+  @registry
   Scenario: Guest without the password cannot see the gifts
     Given someone has a gift registry
     And the registry has a gift

@@ -46,7 +46,7 @@ export default async function SharePage({
   // stronger identity than the password — and the server actions behind
   // this page re-check the same unlock cookie (see requireShareUnlock in
   // ./actions.ts), so the gate is presentation, not the enforcement.
-  if (registry.sharePasswordHash) {
+  if (registry.sharePasswordEncrypted) {
     const cookieStore = await cookies();
     const unlocked =
       hasShareAccess(registry, cookieStore) ||
