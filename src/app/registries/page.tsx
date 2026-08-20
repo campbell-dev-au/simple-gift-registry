@@ -154,14 +154,7 @@ export default async function RegistriesPage() {
 
       {myRegistries.length === 0 ? (
         <p className="text-sm text-ink-dim">
-          You don&apos;t have any registries yet.{" "}
-          <Link
-            href="/registries/new"
-            className="text-violet hover:underline"
-          >
-            Create your first one
-          </Link>{" "}
-          — it only takes a minute.
+          You don&apos;t have any registries yet.
         </p>
       ) : activeRegistries.length === 0 ? (
         <p className="text-sm text-ink-dim">
